@@ -1,0 +1,18 @@
+# FaithView Pro offline verse-detection engine -- CPU-only.
+# Tested on Python 3.10-3.13. Install: pip install -r requirements.txt
+
+# Stage 1: transcription (local Whisper, CTranslate2 backend)
+faster-whisper>=1.0.3
+
+# Stages 4 & 5: embeddings + optional cross-encoder
+sentence-transformers>=3.0.0
+transformers>=4.40.0
+
+# Stage 4: vector index (exact cosine via IndexFlatIP)
+faiss-cpu>=1.8.0
+
+# Shared numerics
+numpy>=1.26.0
+
+# Optional: only needed if you swap in a trained ONNX quote classifier (Stage 3)
+onnxruntime>=1.18.0
