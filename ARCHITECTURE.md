@@ -2,7 +2,7 @@
 
 ## Overview
 
-FaithView Pro is a fully offline command-line pipeline that takes a pre-recorded sermon audio file (WAV/MP3) and produces a timestamped list of scripture citations detected in the speaker's words, matched against a dual-translation Bible corpus (Amplified Bible + NKJV). No cloud calls, no live mic, no UI — it proves the retrieval pipeline before integration into a real-time operator console.
+Offline feature is a fully offline command-line pipeline that takes a pre-recorded sermon audio file (WAV/MP3) and produces a timestamped list of scripture citations detected in the speaker's words, matched against a dual-translation Bible corpus (Amplified Bible + NKJV). No cloud calls, no live mic, no UI — it proves the retrieval pipeline before integration into a real-time operator console.
 
 ---
 

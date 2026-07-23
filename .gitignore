@@ -1,8 +1,23 @@
 # Generated
 index/
 results.json
+synthetic_dataset.jsonl
+synthetic_dataset.csv
+
+# Data: transcripts & CSVs
+transcripts/
+*.csv
+Bishop_Isaiah_the_holy_spirit.txt
+
+# Logs & lock files
+*.log
+.~lock.*#
+
+# Secrets
+.env
 
 # Audio files
+audios/
 *.mp3
 *.wav
 *.m4a
