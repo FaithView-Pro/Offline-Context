@@ -14,5 +14,24 @@ faiss-cpu>=1.8.0
 # Shared numerics
 numpy>=1.26.0
 
+# Live mic cleanup: anti-aliased resampling (scipy.signal.resample_poly)
+# and 2nd-order high-pass to strip HVAC/DC rumble. Fall back to np.interp if
+# absent, but the FIR path is what closes the live-vs-file accuracy gap.
+scipy>=1.11.0
+
 # Optional: only needed if you swap in a trained ONNX quote classifier (Stage 3)
 onnxruntime>=1.18.0
+
+# --- Live real-time path (fully offline) -----------------------------------
+# Stage 1-live: microphone capture via PortAudio (faster-whisper transcribes
+# offline). A bundled lib/libportaudio.so.2 lets sounddevice import without a
+# system package; see live_transcribe.py:_ensure_portaudio.
+sounddevice>=0.5.0
+
+# Live operator console (Milestones 4-5): local FastAPI server + WebSocket +
+# REST endpoints. NOTE: fastapi/uvicorn must be imported BEFORE this repo's
+# runtime modules (config/live_pipeline) or the WS handshake 403-rejects -- see
+# the import-order note at the top of server.py.
+fastapi>=0.115.0
+uvicorn>=0.32.0
+websockets>=13.0   # used by the WS /ws endpoint and the test clients

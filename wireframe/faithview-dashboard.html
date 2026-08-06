@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FaithView Pro — Scriptures</title>
+<style>
+  :root{
+    --bg-app: #0a0a0c;
+    --bg-panel: #111114;
+    --bg-panel-alt: #17171b;
+    --border: #26262b;
+    --border-soft: #1d1d21;
+    --text-primary: #f2f2f3;
+    --text-secondary: #9b9ba3;
+    --text-muted: #5c5c64;
+    --accent-orange: #ef5a28;
+    --accent-orange-dim: #7a3018;
+    --accent-green: #35d07f;
+    --accent-yellow: #e2a83d;
+    --accent-red-bg: #5a1310;
+    --accent-red-line: #c23a1f;
+    --pill-ai: #2a2a30;
+    --radius-s: 4px;
+    --radius-m: 8px;
+    --radius-l: 10px;
+  }
+
+  *{ box-sizing: border-box; margin:0; padding:0; }
+
+  html, body{
+    height:100%;
+    background: var(--bg-app);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app{
+    display:flex;
+    flex-direction: column;
+    height:100vh;
+    overflow:hidden;
+  }
+
+  /* ---------- Top Nav ---------- */
+  .topnav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-app);
+    flex-shrink:0;
+  }
+  .topnav-left{ display:flex; align-items:center; gap:6px; }
+  .nav-tab{
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-weight:600;
+    font-size:13px;
+    color: var(--text-secondary);
+    cursor:pointer;
+    background:transparent;
+    border:none;
+  }
+  .nav-tab.active{
+    background: var(--accent-orange);
+    color:#fff;
+  }
+  .topnav-right{ display:flex; align-items:center; gap:8px; }
+  .status-pill{
+    display:flex; align-items:center; gap:6px;
+    padding:7px 14px;
+    border-radius:999px;
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    font-weight:600;
+    font-size:12px;
+    color: var(--text-primary);
+  }
+  .status-pill .dot{
+    width:7px; height:7px; border-radius:50%;
+    background: var(--accent-red-line);
+  }
+  .icon-btn{
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:6px 10px;
+    border-radius: var(--radius-s);
+    color: var(--text-secondary);
+    font-size:11px;
+    cursor:pointer;
+    background:transparent;
+  }
+  .icon-btn svg{ width:17px; height:17px; }
+  .icon-btn:hover{ color: var(--text-primary); }
+
+  /* ---------- Main grid ---------- */
+  .main{
+    flex:1;
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap:1px;
+    background: var(--border);
+    overflow:hidden;
+    min-height:0;
+  }
+  .panel{
+    background: var(--bg-app);
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 14px 16px 10px;
+    flex-shrink:0;
+  }
+  .panel-title{ font-size:14px; font-weight:700; color:var(--text-primary); }
+  .panel-action{
+    font-size:12px; color: var(--text-secondary);
+    display:flex; align-items:center; gap:5px;
+    cursor:pointer;
+  }
+  .panel-action:hover{ color: var(--text-primary); }
+  .panel-body{
+    flex:1;
+    overflow-y:auto;
+    padding: 0 16px 14px;
+  }
+
+  /* ---------- Transcript panel ---------- */
+  .transcript-line{
+    color: var(--text-muted);
+    line-height:1.65;
+    font-size:13.5px;
+    padding: 1px 0;
+  }
+  .transcript-line.current{
+    color: var(--text-primary);
+    font-weight:600;
+  }
+  .transcribe-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 12px 16px 14px;
+    border-top: 1px solid var(--border-soft);
+    flex-shrink:0;
+  }
+  .transcribe-status{
+    display:flex; align-items:center; gap:8px;
+    color: var(--accent-green);
+    font-weight:600;
+    font-size:13px;
+  }
+  .mic-dot{ width:9px; height:9px; border-radius:2px; background: var(--accent-green); }
+  .rec-square{
+    width:12px; height:12px; border-radius:2px;
+    background: var(--text-muted);
+  }
+
+  /* ---------- Detection cards ---------- */
+  .detect-card{
+    border-top: 1px solid var(--border-soft);
+    padding: 12px 0;
+  }
+  .detect-card:first-child{ border-top:none; }
+  .detect-meta{
+    display:flex; align-items:center; gap:8px;
+    font-size:12px; font-weight:700;
+    margin-bottom:8px;
+  }
+  .conf-dot{ width:7px; height:7px; border-radius:50%; }
+  .conf-high .conf-dot{ background: var(--accent-green); }
+  .conf-high .conf-pct{ color: var(--accent-green); }
+  .conf-mid .conf-dot{ background: var(--accent-yellow); }
+  .conf-mid .conf-pct{ color: var(--accent-yellow); }
+  .ref{ color: var(--text-primary); letter-spacing:.02em; }
+  .detect-text{
+    color: var(--text-secondary);
+    line-height:1.55;
+    font-size:13px;
+    margin-bottom:10px;
+  }
+  .detect-actions{ display:flex; gap:8px; }
+  .btn{
+    display:flex; align-items:center; gap:6px;
+    padding: 7px 12px;
+    border-radius: var(--radius-s);
+    font-size:12px;
+    font-weight:600;
+    cursor:pointer;
+    border:1px solid var(--border);
+    background: var(--bg-panel-alt);
+    color: var(--text-primary);
+  }
+  .btn:hover{ background:#1e1e23; }
+  .btn.primary{
+    background:transparent;
+    color: var(--text-primary);
+  }
+  .btn svg{ width:12px; height:12px; }
+
+  /* ---------- Live display panel ---------- */
+  .live-slide{
+    background: var(--accent-red-bg);
+    border-left: 3px solid var(--accent-red-line);
+    border-radius: var(--radius-s);
+    padding: 14px 16px;
+    margin: 0 16px 16px;
+  }
+  .live-slide-ref{
+    font-size:12px; font-weight:700; letter-spacing:.03em;
+    color:#f3b8a8;
+    margin-bottom:6px;
+  }
+  .live-slide-text{
+    font-size:14px; line-height:1.5; color:#fff;
+  }
+
+  /* ---------- Main output panel ---------- */
+  .output-frame{
+    margin: 0 16px 14px;
+    border-radius: var(--radius-m);
+    overflow:hidden;
+    aspect-ratio: 16/9;
+    position:relative;
+    background: radial-gradient(circle at 50% 30%, #ff5a2b 0%, #7a1a10 55%, #1a0704 100%);
+  }
+  .output-frame svg.silhouette{
+    position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+    height:78%;
+  }
+  .lexicon-btn{
+    position:absolute; left:14px; bottom:14px;
+    display:flex; align-items:center; gap:7px;
+    background: rgba(15,15,17,0.85);
+    border:1px solid rgba(255,255,255,0.12);
+    color:#fff;
+    font-size:12px; font-weight:600;
+    padding:7px 13px;
+    border-radius:999px;
+  }
+  .output-nav{
+    display:flex; align-items:center; justify-content:flex-end; gap:8px;
+    margin: 0 16px 20px;
+  }
+  .round-btn{
+    width:30px; height:30px;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    color: var(--text-secondary);
+    cursor:pointer;
+  }
+
+  .queue-item{
+    border-top: 1px solid var(--border-soft);
+    padding: 12px 0;
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:10px;
+  }
+  .queue-item:first-child{ border-top:none; }
+  .queue-left{ flex:1; min-width:0; }
+  .queue-ref{ font-size:13px; font-weight:700; margin-bottom:2px; }
+  .queue-tag{
+    display:inline-block;
+    font-size:10px; font-weight:700;
+    color: var(--text-muted);
+    margin-bottom:5px;
+  }
+  .queue-text{
+    color: var(--text-secondary);
+    font-size:12.5px;
+    line-height:1.4;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+  }
+  .queue-actions{ display:flex; gap:6px; flex-shrink:0; }
+  .queue-actions .round-btn{ width:26px; height:26px; }
+
+  /* ---------- Bottom bar ---------- */
+  .bottombar{
+    height:44%;
+    min-height:280px;
+    display:grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap:1px;
+    background: var(--border);
+    border-top:1px solid var(--border);
+    flex-shrink:0;
+  }
+  .bible-panel{
+    background: var(--bg-app);
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  .bible-toolbar{
+    display:flex; align-items:center; gap:10px;
+    padding: 10px 16px;
+    flex-shrink:0;
+  }
+  .version-select{
+    display:flex; align-items:center; gap:6px;
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    border-radius: var(--radius-s);
+    padding:6px 10px;
+    font-size:12px; font-weight:700;
+  }
+  .square-btn{
+    width:28px; height:28px;
+    border-radius: var(--radius-s);
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    color: var(--text-secondary);
+  }
+  .ref-input{
+    flex:1;
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    border-radius: var(--radius-s);
+    padding:7px 12px;
+    font-size:13px; font-weight:600;
+    color: var(--text-primary);
+  }
+  .bible-verses{
+    flex:1;
+    overflow-y:auto;
+    padding: 0 16px 14px;
+  }
+  .verse-row{
+    display:flex; gap:14px;
+    padding: 9px 0;
+    border-bottom:1px solid var(--border-soft);
+    align-items:flex-start;
+  }
+  .verse-num{
+    width:20px; flex-shrink:0;
+    color: var(--accent-red-line);
+    font-weight:700;
+    font-size:13px;
+  }
+  .verse-text{ line-height:1.5; color: var(--text-secondary); font-size:13px; }
+  .verse-row.active{
+    background: rgba(194,58,31,0.12);
+    border: 1px solid var(--accent-red-line);
+    border-radius: var(--radius-s);
+    margin: 2px 0;
+    padding: 9px 10px;
+  }
+  .verse-row.active .verse-text{ color: var(--text-primary); font-weight:600; }
+
+  .preview-panel{
+    background: var(--bg-app);
+    display:flex; flex-direction:column;
+    min-height:0;
+  }
+  .preview-frame{
+    margin: 0 16px 16px;
+    border-radius: var(--radius-m);
+    aspect-ratio: 16/9;
+    position:relative;
+    overflow:hidden;
+    background: radial-gradient(circle at 50% 25%, #ff5a2b 0%, #7a1a10 55%, #1a0704 100%);
+    display:flex; align-items:flex-end; justify-content:center;
+  }
+  .preview-frame .cursor{
+    position:absolute; left:38%; top:52%;
+    font-size:20px;
+  }
+  .preview-caption{
+    position:absolute; bottom:16px; left:16px; right:16px;
+    text-align:center;
+  }
+  .preview-caption .txt{ color:#fff; font-size:12.5px; font-weight:600; line-height:1.4; }
+  .preview-caption .cite{ color:#f3b8a8; font-size:10px; margin-top:6px; font-weight:600; }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background:#2a2a2f; border-radius:8px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOP NAV -->
+  <div class="topnav">
+    <div class="topnav-left">
+      <button class="nav-tab active">Scriptures</button>
+      <button class="nav-tab">Slides</button>
+      <button class="nav-tab">Songs</button>
+    </div>
+    <div class="topnav-right">
+      <div class="status-pill"><span class="dot"></span>LIVE</div>
+      <div class="status-pill">BLACK</div>
+      <div class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
+        Outputs
+      </div>
+      <div class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18"/></svg>
+        Themes
+      </div>
+      <div class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 4v16M4 9h16"/></svg>
+        Studio
+      </div>
+      <div class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+        Alerts
+      </div>
+      <div class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 01-4 0v-.09A1.7 1.7 0 009 19.4a1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.7 1.7 0 004.6 15a1.7 1.7 0 00-1.55-1H3a2 2 0 010-4h.09A1.7 1.7 0 004.6 9a1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06A1.7 1.7 0 009 4.6a1.7 1.7 0 001-1.55V3a2 2 0 014 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06A1.7 1.7 0 0019.4 9c.2.62.75 1.06 1.55 1H21a2 2 0 010 4h-.09a1.7 1.7 0 00-1.51 1z"/></svg>
+        Settings
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN 4-COLUMN GRID -->
+  <div class="main">
+
+    <!-- Column 1: Live Transcript -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Live transcript</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-secondary)"><path d="M9 3H5a2 2 0 00-2 2v4M15 3h4a2 2 0 012 2v4M9 21H5a2 2 0 01-2-2v-4M15 21h4a2 2 0 002-2v-4"/></svg>
+      </div>
+      <div class="panel-body">
+        <p class="transcript-line">We can have that in the book of James from</p>
+        <p class="transcript-line">James chapter one verse 19 to 20. The</p>
+        <p class="transcript-line">also warns us that where there is no guidance, a people</p>
+        <p class="transcript-line">for the abundance of</p>
+        <p class="transcript-line">counsel,</p>
+        <p class="transcript-line">is safety. We can have that in the book of Proverbs</p>
+        <p class="transcript-line">eleven fourteen.</p>
+        <p class="transcript-line">Let's go to the next verse.</p>
+        <p class="transcript-line">Let's go to the</p>
+        <p class="transcript-line">next verse.</p>
+        <p class="transcript-line">The previous verse.</p>
+        <p class="transcript-line current">The previous verse.</p>
+      </div>
+      <div class="transcribe-row">
+        <div class="transcribe-status">
+          <span class="mic-dot"></span> Start transcribing
+        </div>
+        <span class="rec-square"></span>
+      </div>
+    </div>
+
+    <!-- Column 2: Recent detections -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Recent detections</span>
+        <span class="panel-action">✕ Clear all</span>
+      </div>
+      <div class="panel-body">
+
+        <div class="detect-card conf-high">
+          <div class="detect-meta">
+            <span class="conf-dot"></span>
+            <span class="conf-pct">100%</span>
+            <span class="ref">2 KINGS 6:2</span>
+          </div>
+          <p class="detect-text">Please, let us go to the Jordan, and let every man take a beam from there, and let us make there a place where we may dwell." So he answered, "Go."</p>
+          <div class="detect-actions">
+            <button class="btn">+ Add to queue</button>
+            <button class="btn primary">▶ Present</button>
+          </div>
+        </div>
+
+        <div class="detect-card conf-high">
+          <div class="detect-meta">
+            <span class="conf-dot"></span>
+            <span class="conf-pct">100%</span>
+            <span class="ref">PROVERBS 11:14</span>
+          </div>
+          <p class="detect-text">Where there is no counsel, the people fall; But in the multitude of counselors there is safety.</p>
+          <div class="detect-actions">
+            <button class="btn">+ Add to queue</button>
+            <button class="btn primary">▶ Present</button>
+          </div>
+        </div>
+
+        <div class="detect-card conf-mid">
+          <div class="detect-meta">
+            <span class="conf-dot"></span>
+            <span class="conf-pct">68%</span>
+            <span class="ref">DEUTERONOMY 28:47</span>
+          </div>
+          <p class="detect-text">"Because you did not serve the Lord your God with joy and gladness of heart, for the abundance of everything,</p>
+          <div class="detect-actions">
+            <button class="btn">+ Add to queue</button>
+            <button class="btn primary">▶ Present</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Column 3: Live display -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Live display</span>
+      </div>
+      <div class="live-slide">
+        <div class="live-slide-ref">PROVERBS 11:13 (NKJV)</div>
+        <div class="live-slide-text">A talebearer reveals secrets, But he who is of a faithful spirit conceals a matter.</div>
+      </div>
+    </div>
+
+    <!-- Column 4: Main output -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Main output <span style="color:var(--text-muted)">▾</span></span>
+        <span class="panel-action" style="letter-spacing:.05em;">EDEN</span>
+      </div>
+      <div class="output-frame">
+        <svg class="silhouette" viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="100" cy="60" rx="26" ry="30" fill="#1a0603" opacity="0.85"/>
+          <path d="M60 260 C55 170 65 110 100 100 C135 110 145 170 140 260 Z" fill="#1a0603" opacity="0.85"/>
+        </svg>
+        <div class="lexicon-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+          Lexicon
+        </div>
+      </div>
+      <div class="output-nav">
+        <div class="round-btn">‹</div>
+        <div class="round-btn">›</div>
+      </div>
+
+      <div class="panel-head" style="padding-top:0;">
+        <span class="panel-title" style="font-size:13px;">Queue</span>
+        <span class="panel-action">✕ Clear all</span>
+      </div>
+      <div class="panel-body" style="padding-bottom:8px;">
+
+        <div class="queue-item">
+          <div class="queue-left">
+            <div class="queue-ref">Proverbs 11:14</div>
+            <div class="queue-tag">AI</div>
+            <div class="queue-text">Where there is no counsel, the people fall; But i...</div>
+          </div>
+          <div class="queue-actions">
+            <div class="round-btn">▶</div>
+            <div class="round-btn">✕</div>
+          </div>
+        </div>
+
+        <div class="queue-item">
+          <div class="queue-left">
+            <div class="queue-ref">James 1:19</div>
+            <div class="queue-tag">AI</div>
+            <div class="queue-text">So then, my beloved brethren, let every man b...</div>
+          </div>
+          <div class="queue-actions">
+            <div class="round-btn">▶</div>
+            <div class="round-btn">✕</div>
+          </div>
+        </div>
+
+        <div class="queue-item">
+          <div class="queue-left">
+            <div class="queue-ref">James 1:9</div>
+            <div class="queue-tag">AI</div>
+            <div class="queue-text">Let the lowly brother glory in his exaltation,</div>
+          </div>
+          <div class="queue-actions">
+            <div class="round-btn">▶</div>
+            <div class="round-btn">✕</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottombar">
+
+    <!-- Bible reader -->
+    <div class="bible-panel">
+      <div class="bible-toolbar">
+        <div class="version-select">NKJV ▾</div>
+        <div class="square-btn">▢</div>
+        <div class="square-btn">▤</div>
+        <div class="ref-input">Proverbs 11:14</div>
+        <div class="square-btn">‹</div>
+        <div class="square-btn">›</div>
+      </div>
+      <div class="bible-verses">
+        <div class="verse-row"><span class="verse-num">10</span><span class="verse-text">When it goes well with the righteous, the city rejoices; And when the wicked perish, there is jubilation.</span></div>
+        <div class="verse-row"><span class="verse-num">11</span><span class="verse-text">By the blessing of the upright the city is exalted, But it is overthrown by the mouth of the wicked.</span></div>
+        <div class="verse-row"><span class="verse-num">12</span><span class="verse-text">He who is devoid of wisdom despises his neighbor, But a man of understanding holds his peace.</span></div>
+        <div class="verse-row active"><span class="verse-num">13</span><span class="verse-text">A talebearer reveals secrets, But he who is of a faithful spirit conceals a matter.</span></div>
+        <div class="verse-row"><span class="verse-num">14</span><span class="verse-text">Where there is no counsel, the people fall; But in the multitude of counselors there is safety.</span></div>
+        <div class="verse-row"><span class="verse-num">15</span><span class="verse-text">He who is surety for a stranger will suffer, But one who hates being surety is secure.</span></div>
+        <div class="verse-row"><span class="verse-num">16</span><span class="verse-text">A gracious woman retains honor, But ruthless men retain riches.</span></div>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div class="preview-panel">
+      <div class="panel-head">
+        <span class="panel-title">Preview</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-secondary)"><path d="M9 3H5a2 2 0 00-2 2v4M15 3h4a2 2 0 012 2v4M9 21H5a2 2 0 01-2-2v-4M15 21h4a2 2 0 002-2v-4"/></svg>
+      </div>
+      <div class="preview-frame">
+        <span class="cursor">👆</span>
+        <div class="preview-caption">
+          <div class="txt">A talebearer reveals secrets, But he who is of a faithful spirit conceals a matter.</div>
+          <div class="cite">Proverbs 11:13 (NKJV)</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

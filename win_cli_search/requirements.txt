@@ -1,0 +1,7 @@
+# FaithView Pro Bible Vector Search -- offline CLI tool
+# Install:  pip install -r requirements.txt
+# Or run:   setup.bat  (Windows)
+
+sentence-transformers>=3.0.0
+faiss-cpu>=1.8.0
+numpy>=1.26.0

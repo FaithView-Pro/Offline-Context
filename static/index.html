@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FaithView Pro — Scriptures</title>
+<style>
+  :root{
+    --bg-app: #0a0a0c;
+    --bg-panel: #111114;
+    --bg-panel-alt: #17171b;
+    --border: #26262b;
+    --border-soft: #1d1d21;
+    --text-primary: #f2f2f3;
+    --text-secondary: #9b9ba3;
+    --text-muted: #5c5c64;
+    --accent-orange: #ef5a28;
+    --accent-orange-dim: #7a3018;
+    --accent-green: #35d07f;
+    --accent-yellow: #e2a83d;
+    --accent-red-bg: #5a1310;
+    --accent-red-line: #c23a1f;
+    --pill-ai: #2a2a30;
+    --radius-s: 4px;
+    --radius-m: 8px;
+    --radius-l: 10px;
+  }
+
+  *{ box-sizing: border-box; margin:0; padding:0; }
+
+  html, body{
+    height:100%;
+    background: var(--bg-app);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app{
+    display:flex;
+    flex-direction: column;
+    height:100vh;
+    overflow:hidden;
+  }
+
+  .toast{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:999;
+    background:var(--bg-panel-alt); border:1px solid var(--border); color:var(--text-primary);
+    padding:8px 14px; border-radius:6px; font-size:12px; opacity:0; transition:opacity .2s; }
+  .toast.show{ opacity:1; }
+
+  /* ---------- Top Nav ---------- */
+  .topnav{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-app);
+    flex-shrink:0;
+  }
+  .topnav-left{ display:flex; align-items:center; gap:6px; }
+  .nav-tab{
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-weight:600; font-size:13px;
+    color: var(--text-secondary);
+    cursor:pointer;
+    background:transparent; border:none;
+  }
+  .nav-tab.active{
+    background: var(--accent-orange);
+    color:#fff;
+  }
+  .topnav-right{ display:flex; align-items:center; gap:8px; }
+  .status-pill{
+    display:flex; align-items:center; gap:6px;
+    padding:7px 14px; border-radius:999px;
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    font-weight:600; font-size:12px;
+    color: var(--text-primary);
+  }
+  .status-pill .dot{
+    width:7px; height:7px; border-radius:50%;
+    background: var(--accent-red-line);
+  }
+  .status-pill.live .dot{ background: var(--accent-green); }
+  .icon-btn{
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:6px 10px; border-radius: var(--radius-s);
+    color: var(--text-secondary); font-size:11px; cursor:pointer;
+    background:transparent; border:none;
+  }
+  .icon-btn svg{ width:17px; height:17px; }
+  .icon-btn:hover{ color: var(--text-primary); }
+
+  /* ---------- Main grid ---------- */
+  .main{
+    flex:1;
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap:1px;
+    background: var(--border);
+    overflow:hidden;
+    min-height:0;
+  }
+  .panel{
+    background: var(--bg-app);
+    display:flex; flex-direction:column;
+    min-height:0; overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 14px 16px 10px; flex-shrink:0;
+  }
+  .panel-title{ font-size:14px; font-weight:700; color:var(--text-primary); }
+  .panel-action{
+    font-size:12px; color: var(--text-secondary);
+    display:flex; align-items:center; gap:5px;
+    cursor:pointer; background:none; border:none;
+  }
+  .panel-action:hover{ color: var(--text-primary); }
+  .panel-body{
+    flex:1; overflow-y:auto;
+    padding: 0 16px 14px;
+  }
+  .empty{ color:var(--text-muted); font-style:italic; font-size:13px; padding:12px; text-align:center; }
+
+  /* ---------- Transcript panel ---------- */
+  .transcript-line{
+    color: var(--text-muted);
+    line-height:1.65; font-size:13.5px; padding: 1px 0;
+  }
+  .transcript-line.current{
+    color: var(--text-primary); font-weight:600;
+  }
+  .transcribe-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 12px 16px 14px;
+    border-top: 1px solid var(--border-soft);
+    flex-shrink:0;
+  }
+  .transcribe-status{
+    display:flex; align-items:center; gap:8px;
+    color: var(--accent-green); font-weight:600; font-size:13px;
+  }
+  .mic-dot{ width:9px; height:9px; border-radius:2px; background: var(--accent-green); }
+  .rec-square{
+    width:12px; height:12px; border-radius:2px;
+    background: var(--text-muted);
+  }
+
+  /* ---------- Detection cards ---------- */
+  .detect-card{
+    border-top: 1px solid var(--border-soft);
+    padding: 12px 0;
+  }
+  .detect-card:first-child{ border-top:none; }
+  .detect-meta{
+    display:flex; align-items:center; gap:8px;
+    font-size:12px; font-weight:700; margin-bottom:8px;
+  }
+  .conf-dot{ width:7px; height:7px; border-radius:50%; }
+  .conf-high .conf-dot{ background: var(--accent-green); }
+  .conf-high .conf-pct{ color: var(--accent-green); }
+  .conf-mid .conf-dot{ background: var(--accent-yellow); }
+  .conf-mid .conf-pct{ color: var(--accent-yellow); }
+  .conf-low .conf-dot{ background: var(--accent-red-line); }
+  .conf-low .conf-pct{ color: var(--accent-red-line); }
+  .ref{ color: var(--text-primary); letter-spacing:.02em; }
+  .detect-text{
+    color: var(--text-secondary);
+    line-height:1.55; font-size:13px; margin-bottom:10px;
+  }
+  .detect-actions{ display:flex; gap:8px; }
+  .btn{
+    display:flex; align-items:center; gap:6px;
+    padding: 7px 12px; border-radius: var(--radius-s);
+    font-size:12px; font-weight:600; cursor:pointer;
+    border:1px solid var(--border);
+    background: var(--bg-panel-alt);
+    color: var(--text-primary);
+  }
+  .btn:hover{ background:#1e1e23; }
+  .btn.primary{
+    background:transparent;
+    color: var(--text-primary);
+  }
+  .btn svg{ width:12px; height:12px; }
+
+  /* ---------- Live display panel ---------- */
+  .live-slide{
+    background: var(--accent-red-bg);
+    border-left: 3px solid var(--accent-red-line);
+    border-radius: var(--radius-s);
+    padding: 14px 16px;
+    margin: 0 16px 16px;
+  }
+  .live-slide.hidden{ display:none; }
+  .live-slide-ref{
+    font-size:12px; font-weight:700; letter-spacing:.03em;
+    color:#f3b8a8; margin-bottom:6px;
+  }
+  .live-slide-text{
+    font-size:14px; line-height:1.5; color:#fff;
+  }
+
+  /* ---------- Main output panel ---------- */
+  .output-frame{
+    margin: 0 16px 14px;
+    border-radius: var(--radius-m);
+    overflow:hidden;
+    aspect-ratio: 16/9;
+    position:relative;
+    background: radial-gradient(circle at 50% 30%, #ff5a2b 0%, #7a1a10 55%, #1a0704 100%);
+  }
+  .output-frame svg.silhouette{
+    position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+    height:78%;
+  }
+  .lexicon-btn{
+    position:absolute; left:14px; bottom:14px;
+    display:flex; align-items:center; gap:7px;
+    background: rgba(15,15,17,0.85);
+    border:1px solid rgba(255,255,255,0.12);
+    color:#fff; font-size:12px; font-weight:600;
+    padding:7px 13px; border-radius:999px;
+  }
+  .output-nav{
+    display:flex; align-items:center; justify-content:flex-end; gap:8px;
+    margin: 0 16px 20px;
+  }
+  .round-btn{
+    width:30px; height:30px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    color: var(--text-secondary); cursor:pointer;
+  }
+  .round-btn:hover{ color: var(--text-primary); }
+
+  .queue-item{
+    border-top: 1px solid var(--border-soft);
+    padding: 12px 0;
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:10px;
+  }
+  .queue-item:first-child{ border-top:none; }
+  .queue-left{ flex:1; min-width:0; }
+  .queue-ref{ font-size:13px; font-weight:700; margin-bottom:2px; }
+  .queue-tag{
+    display:inline-block; font-size:10px; font-weight:700;
+    color: var(--text-muted); margin-bottom:5px;
+  }
+  .queue-text{
+    color: var(--text-secondary); font-size:12.5px; line-height:1.4;
+    overflow:hidden; text-overflow:ellipsis;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  }
+  .queue-actions{ display:flex; gap:6px; flex-shrink:0; }
+  .queue-actions .round-btn{ width:26px; height:26px; }
+
+  /* ---------- Bottom bar ---------- */
+  .bottombar{
+    height:44%;
+    min-height:280px;
+    display:grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap:1px;
+    background: var(--border);
+    border-top:1px solid var(--border);
+    flex-shrink:0;
+  }
+  .bible-panel{
+    background: var(--bg-app);
+    display:flex; flex-direction:column; min-height:0;
+  }
+  .bible-toolbar{
+    display:flex; align-items:center; gap:10px;
+    padding: 10px 16px; flex-shrink:0;
+  }
+  .version-select{
+    display:flex; align-items:center; gap:6px;
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    border-radius: var(--radius-s);
+    padding:6px 10px; font-size:12px; font-weight:700;
+    cursor:pointer;
+  }
+  .square-btn{
+    width:28px; height:28px; border-radius: var(--radius-s);
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    color: var(--text-secondary); cursor:pointer;
+  }
+  .square-btn:hover{ color: var(--text-primary); }
+  .ref-input{
+    flex:1;
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    border-radius: var(--radius-s);
+    padding:7px 12px; font-size:13px; font-weight:600;
+    color: var(--text-primary);
+  }
+  .bible-verses{
+    flex:1; overflow-y:auto;
+    padding: 0 16px 14px;
+  }
+  .verse-row{
+    display:flex; gap:14px;
+    padding: 9px 0;
+    border-bottom:1px solid var(--border-soft);
+    align-items:flex-start;
+  }
+  .verse-num{
+    width:20px; flex-shrink:0;
+    color: var(--accent-red-line); font-weight:700; font-size:13px;
+  }
+  .verse-text{ line-height:1.5; color: var(--text-secondary); font-size:13px; }
+  .verse-row.active{
+    background: rgba(194,58,31,0.12);
+    border: 1px solid var(--accent-red-line);
+    border-radius: var(--radius-s);
+    margin: 2px 0;
+    padding: 9px 10px;
+  }
+  .verse-row.active .verse-text{ color: var(--text-primary); font-weight:600; }
+
+  .preview-panel{
+    background: var(--bg-app);
+    display:flex; flex-direction:column; min-height:0;
+  }
+  .preview-frame{
+    margin: 0 16px 16px;
+    border-radius: var(--radius-m);
+    aspect-ratio: 16/9;
+    position:relative; overflow:hidden;
+    background: radial-gradient(circle at 50% 25%, #ff5a2b 0%, #7a1a10 55%, #1a0704 100%);
+    display:flex; align-items:flex-end; justify-content:center;
+  }
+  .preview-frame .cursor{
+    position:absolute; left:38%; top:52%; font-size:20px;
+  }
+  .preview-caption{
+    position:absolute; bottom:16px; left:16px; right:16px; text-align:center;
+  }
+  .preview-caption .txt{ color:#fff; font-size:12.5px; font-weight:600; line-height:1.4; }
+  .preview-caption .cite{ color:#f3b8a8; font-size:10px; margin-top:6px; font-weight:600; }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background:#2a2a2f; border-radius:8px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOP NAV -->
+  <div class="topnav">
+    <div class="topnav-left">
+      <button class="nav-tab active">Scriptures</button>
+      <button class="nav-tab">Slides</button>
+      <button class="nav-tab">Songs</button>
+    </div>
+    <div class="topnav-right">
+      <div class="status-pill" id="status-pill"><span class="dot"></span>LIVE</div>
+      <div class="status-pill">BLACK</div>
+      <div class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
+        Outputs
+      </div>
+      <div class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18"/></svg>
+        Themes
+      </div>
+      <div class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 4v16M4 9h16"/></svg>
+        Studio
+      </div>
+      <div class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+        Alerts
+      </div>
+      <div class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 01-4 0v-.09A1.7 1.7 0 009 19.4a1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.7 1.7 0 004.6 15a1.7 1.7 0 00-1.55-1H3a2 2 0 010-4h.09A1.7 1.7 0 004.6 9a1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06A1.7 1.7 0 009 4.6a1.7 1.7 0 001-1.55V3a2 2 0 014 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06A1.7 1.7 0 0019.4 9c.2.62.75 1.06 1.55 1H21a2 2 0 010 4h-.09a1.7 1.7 0 00-1.51 1z"/></svg>
+        Settings
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN 4-COLUMN GRID -->
+  <div class="main">
+
+    <!-- Column 1: Live Transcript -->
+    <div class="panel" id="transcript-panel">
+      <div class="panel-head">
+        <span class="panel-title">Live transcript</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-secondary)"><path d="M9 3H5a2 2 0 00-2 2v4M15 3h4a2 2 0 012 2v4M9 21H5a2 2 0 01-2-2v-4M15 21h4a2 2 0 002-2v-4"/></svg>
+      </div>
+      <div class="panel-body" id="transcript-body">
+        <div class="empty">waiting for speech…</div>
+      </div>
+      <div class="transcribe-row">
+        <div class="transcribe-status" id="transcribe-status">
+          <span class="mic-dot" id="mic-dot"></span> Start transcribing
+        </div>
+        <span class="rec-square"></span>
+      </div>
+    </div>
+
+    <!-- Column 2: Recent detections -->
+    <div class="panel" id="detections-panel">
+      <div class="panel-head">
+        <span class="panel-title">Recent detections</span>
+        <button class="panel-action" id="clear-detections">✕ Clear all</button>
+      </div>
+      <div class="panel-body" id="detections-body">
+        <div class="empty">no detections yet</div>
+      </div>
+    </div>
+
+    <!-- Column 3: Live display -->
+    <div class="panel" id="display-panel">
+      <div class="panel-head">
+        <span class="panel-title">Live display</span>
+      </div>
+      <div class="live-slide hidden" id="live-slide">
+        <div class="live-slide-ref" id="live-slide-ref"></div>
+        <div class="live-slide-text" id="live-slide-text"></div>
+      </div>
+      <div class="panel-body" style="text-align:center;padding-top:40px;">
+        <div class="empty" id="display-empty">nothing presented yet</div>
+      </div>
+    </div>
+
+    <!-- Column 4: Main output + Queue -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Main output <span style="color:var(--text-muted)">▾</span></span>
+        <span class="panel-action" style="letter-spacing:.05em;">EDEN</span>
+      </div>
+      <div class="output-frame">
+        <svg class="silhouette" viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="100" cy="60" rx="26" ry="30" fill="#1a0603" opacity="0.85"/>
+          <path d="M60 260 C55 170 65 110 100 100 C135 110 145 170 140 260 Z" fill="#1a0603" opacity="0.85"/>
+        </svg>
+        <div class="lexicon-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+          Lexicon
+        </div>
+      </div>
+      <div class="output-nav" style="margin-top:0;">
+        <div class="round-btn">‹</div>
+        <div class="round-btn">›</div>
+      </div>
+
+      <div class="panel-head" style="padding-top:0;">
+        <span class="panel-title" style="font-size:13px;">Queue</span>
+        <button class="panel-action" id="clear-queue">✕ Clear all</button>
+      </div>
+      <div class="panel-body" style="padding-bottom:8px;" id="queue-body">
+        <div class="empty">queue is empty</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottombar">
+
+    <!-- Bible reader -->
+    <div class="bible-panel">
+      <div class="bible-toolbar">
+        <select class="version-select" id="version-select">
+          <option value="NKJV" selected>NKJV</option>
+          <option value="KJV">KJV</option>
+          <option value="AMP">AMP</option>
+          <option value="NIV">NIV</option>
+          <option value="NLT">NLT</option>
+          <option value="ESV">ESV</option>
+          <option value="MSB">MSB</option>
+        </select>
+        <div class="square-btn" id="btn-prev-chapter" title="Previous chapter">‹</div>
+        <div class="square-btn" id="btn-next-chapter" title="Next chapter">›</div>
+        <div class="ref-input" id="bible-ref-input" placeholder="e.g. Romans 8:28"></div>
+        <div class="square-btn" id="btn-prev-verse" title="Previous verse">◂</div>
+        <div class="square-btn" id="btn-next-verse" title="Next verse">▸</div>
+      </div>
+      <div class="bible-verses" id="bible-verses">
+        <div class="empty">select a chapter</div>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div class="preview-panel">
+      <div class="panel-head">
+        <span class="panel-title">Preview</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-secondary)"><path d="M9 3H5a2 2 0 00-2 2v4M15 3h4a2 2 0 012 2v4M9 21H5a2 2 0 01-2-2v-4M15 21h4a2 2 0 002-2v-4"/></svg>
+      </div>
+      <div class="preview-frame">
+        <span class="cursor" style="font-size:30px;">👆</span>
+        <div class="preview-caption">
+          <div class="txt" id="preview-txt">hover or select a verse to preview</div>
+          <div class="cite" id="preview-cite"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const WS_URL = (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/ws";
+const API = location.origin;
+
+let ws = null;
+let queue = [];
+let session = {};  // {translation, book, chapter, verse}
+
+function $(sel){ return document.querySelector(sel); }
+function $$(sel){ return document.querySelectorAll(sel); }
+
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 1600);
+}
+
+// ---- POST / DEL helpers ----
+async function post(path, body){
+  try {
+    const r = await fetch(API + path, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: body == null ? null : JSON.stringify(body),
+    });
+    return await r.json();
+  } catch(e){ toast("error: "+e); }
+}
+async function del(path){
+  try {
+    const r = await fetch(API + path, {method:"DELETE"});
+    return await r.json();
+  } catch(e){}
+}
+
+function escapeHtml(s){ return (s==null?"":String(s))
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+  .replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+
+// ---- WebSocket ----
+function connect(){
+  ws = new WebSocket(WS_URL);
+  $("#status-pill").classList.remove("live");
+  ws.onopen = () => {
+    $("#status-pill").classList.add("live");
+    $("#transcribe-status").innerHTML = '<span class="mic-dot"></span> Listening…';
+  };
+  ws.onclose = () => {
+    $("#status-pill").classList.remove("live");
+    $("#transcribe-status").innerHTML = '<span class="mic-dot" style="background:var(--accent-red-line)"></span> Disconnected';
+    setTimeout(connect, 2000);
+  };
+  ws.onerror = () => { ws.close(); };
+  ws.onmessage = (ev) => {
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    switch (m.type){
+      case "transcript_update": addTranscript(m); break;
+      case "detection": addDetection(m); break;
+      case "display_update": setDisplay(m); break;
+      case "queue_update": queue = m.queue || []; renderQueue(); break;
+      case "session_update": updateSession(m); break;
+    }
+  };
+}
+
+// ---- Transcript panel ----
+let transcriptLines = [];
+function addTranscript(m){
+  const body = $("#transcript-body");
+  const empty = body.querySelector(".empty");
+  if (empty) empty.remove();
+  // mark previous last as not-current
+  const prev = body.querySelector(".transcript-line.current");
+  if (prev) prev.classList.remove("current");
+  const line = document.createElement("p");
+  line.className = "transcript-line current";
+  line.textContent = m.text || "";
+  body.appendChild(line);
+  while (body.children.length > 200) body.removeChild(body.firstChild);
+  body.scrollTop = body.scrollHeight;
+}
+
+// ---- Detections panel ----
+function confClass(band){
+  if (!band) return "conf-low";
+  const b = band.replace(/\s+/g,"-").toLowerCase();
+  if (b === "autopilot-eligible") return "conf-high";
+  if (b === "review" || b === "review-queue") return "conf-mid";
+  return "conf-low";
+}
+function addDetection(m){
+  const body = $("#detections-body");
+  const empty = body.querySelector(".empty");
+  if (empty) empty.remove();
+  const band = m.confidence_band || "ignored";
+  const pct = (m.confidence_percent != null ? m.confidence_percent : Math.round((m.confidence||0)*100));
+  const ccls = confClass(band);
+  const card = document.createElement("div");
+  card.className = "detect-card " + ccls;
+  card.innerHTML =
+    '<div class="detect-meta">' +
+      '<span class="conf-dot"></span>' +
+      '<span class="conf-pct">' + pct + '%</span>' +
+      '<span class="ref">' + escapeHtml((m.reference||"").toUpperCase()) + '</span>' +
+    '</div>' +
+    '<p class="detect-text">' + escapeHtml(m.text || "") + '</p>' +
+    '<div class="detect-actions">' +
+      '<button class="btn" data-act="queue">+ Add to queue</button>' +
+      '<button class="btn primary" data-act="present">▶ Present</button>' +
+    '</div>';
+  card.querySelector('[data-act="queue"]').onclick = () => addToQueue(m);
+  card.querySelector('[data-act="present"]').onclick = () => present(m);
+  body.insertBefore(card, body.firstChild);
+  while (body.children.length > 50) body.removeChild(body.lastChild);
+}
+$("#clear-detections").onclick = () => {
+  const body = $("#detections-body");
+  body.innerHTML = '<div class="empty">no detections yet</div>';
+};
+
+// ---- Display panel ----
+function setDisplay(m){
+  const slide = $("#live-slide");
+  const empty = $("#display-empty");
+  if (m.clear){
+    slide.classList.add("hidden");
+    empty.style.display = "block";
+    empty.textContent = "display cleared";
+    return;
+  }
+  slide.classList.remove("hidden");
+  empty.style.display = "none";
+  $("#live-slide-ref").textContent = ((m.reference||"").toUpperCase() + " (" + (m.translation||"") + ")");
+  $("#live-slide-text").textContent = m.text || "";
+}
+
+// ---- Queue panel ----
+function addToQueue(det){
+  post("/queue/add", {
+    reference: det.reference, translation: det.translation, text: det.text,
+    confidence: det.confidence, confidence_band: det.confidence_band,
+  }).then(() => toast("added to queue"));
+}
+function present(det){
+  post("/present", {reference: det.reference, translation: det.translation, text: det.text})
+    .then(() => toast("presenting " + (det.reference||"")));
+}
+function renderQueue(){
+  const body = $("#queue-body");
+  body.innerHTML = "";
+  if (!queue.length){ body.innerHTML = '<div class="empty">queue is empty</div>'; return; }
+  for (const q of queue){
+    const item = document.createElement("div");
+    item.className = "queue-item";
+    const tag = (q.confidence_band === "autopilot-eligible" ? "AI" : "Review");
+    item.innerHTML =
+      '<div class="queue-left">' +
+        '<div class="queue-ref">' + escapeHtml(q.reference||"") + '</div>' +
+        '<div class="queue-tag">' + tag + '</div>' +
+        '<div class="queue-text">' + escapeHtml(q.text||"") + '</div>' +
+      '</div>' +
+      '<div class="queue-actions">' +
+        '<div class="round-btn" data-act="present">▶</div>' +
+        '<div class="round-btn" data-act="remove">✕</div>' +
+      '</div>';
+    item.querySelector('[data-act="present"]').onclick = () =>
+      post("/present", {reference: q.reference, translation: q.translation, text: q.text})
+        .then(() => toast("presenting " + (q.reference||"")));
+    item.querySelector('[data-act="remove"]').onclick = () =>
+      del("/queue/" + q.id).then(() => toast("removed"));
+    body.appendChild(item);
+  }
+}
+$("#clear-queue").onclick = () => post("/queue/clear", {}).then(() => toast("queue cleared"));
+
+// ---- Session (current_reference) / Bible reader ----
+function updateSession(m){
+  session = {
+    translation: m.translation || "NKJV",
+    book: m.book || "",
+    chapter: m.chapter || 1,
+    verse: m.verse || 1,
+  };
+  if (session.book) {
+    $("#version-select").value = session.translation;
+    loadChapter(session.translation, session.book, session.chapter, session.verse);
+  }
+}
+
+async function loadChapter(translation, book, chapter, activeVerse){
+  try {
+    const r = await fetch(API + "/bible/" + encodeURIComponent(translation) + "/" + encodeURIComponent(book) + "/" + chapter);
+    const data = await r.json();
+    if (!data.verses) { toast("no verses found"); return; }
+    session.translation = data.translation;
+    session.book = data.book;
+    session.chapter = data.chapter;
+    if (activeVerse) session.verse = activeVerse;
+    $("#version-select").value = data.translation;
+    renderVerses(data.verses, activeVerse || session.verse);
+    $("#bible-ref-input").value = data.book + " " + data.chapter;
+  } catch(e) { toast("bible load error"); }
+}
+
+function renderVerses(verses, activeVerse){
+  const body = $("#bible-verses");
+  body.innerHTML = "";
+  if (!verses.length){ body.innerHTML = '<div class="empty">no verses</div>'; return; }
+  for (const v of verses){
+    const row = document.createElement("div");
+    row.className = "verse-row";
+    if (v.verse === activeVerse) row.classList.add("active");
+    row.innerHTML =
+      '<span class="verse-num">' + v.verse + '</span>' +
+      '<span class="verse-text">' + escapeHtml(v.text) + '</span>';
+    row.onclick = () => {
+      const text = v.text;
+      setPreview(text, session.book + " " + session.chapter + ":" + v.verse + " (" + session.translation + ")");
+      // highlight clicked row
+      body.querySelectorAll(".verse-row").forEach(r => r.classList.remove("active"));
+      row.classList.add("active");
+      session.verse = v.verse;
+    };
+    body.appendChild(row);
+  }
+  body.scrollTop = 0;
+}
+
+// ---- Preview panel ----
+function setPreview(text, cite){
+  $("#preview-txt").textContent = text || "";
+  $("#preview-cite").textContent = cite || "";
+}
+
+// ---- Bible toolbar buttons ----
+function navVerse(delta){
+  // Not persisted on server -- just visually browse the chapter's verses
+  let v = (session.verse || 1) + delta;
+  if (v < 1) return;
+  session.verse = v;
+  renderVerses(currentVerses || [], v);
+  const row = document.querySelector(".verse-row.active");
+  if (row && row.querySelector(".verse-text")) {
+    setPreview(row.querySelector(".verse-text").textContent,
+      session.book + " " + session.chapter + ":" + v + " (" + session.translation + ")");
+  }
+}
+let currentVerses = [];
+// Hook renderVerses to cache data
+const _origRenderVerses = renderVerses;
+renderVerses = function(verses, activeVerse){
+  currentVerses = verses;
+  _origRenderVerses(verses, activeVerse);
+};
+
+$("#btn-prev-verse").onclick = () => navVerse(-1);
+$("#btn-next-verse").onclick = () => navVerse(1);
+$("#btn-prev-chapter").onclick = () => {
+  const c = Math.max(1, (session.chapter || 1) - 1);
+  loadChapter(session.translation || "NKJV", session.book || "Genesis", c, 1);
+};
+$("#btn-next-chapter").onclick = () => {
+  const c = (session.chapter || 1) + 1;
+  loadChapter(session.translation || "NKJV", session.book || "Genesis", c, 1);
+};
+$("#version-select").onchange = function(){
+  if (session.book){
+    loadChapter(this.value, session.book, session.chapter, session.verse);
+  }
+};
+$("#bible-ref-input").onkeydown = function(ev){
+  if (ev.key === "Enter"){
+    const ref = this.value.trim();
+    const m = ref.match(/^(.+)\s+(\d+)$/);
+    if (m){
+      const book = m[1];
+      const chapter = parseInt(m[2]);
+      loadChapter(session.translation || "NKJV", book, chapter, 1);
+    } else {
+      toast("enter 'Book chapter' e.g. Romans 8");
+    }
+  }
+};
+
+// ---- Start ----
+connect();
+</script>
+</body>
+</html>

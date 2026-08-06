@@ -4,8 +4,8 @@ Pure local scoring -- no cloud API. Takes the re-ranked candidates for a
 sentence window and produces the final confidence + band:
 
     >= 0.96  -> "autopilot-eligible"
-    >= 0.80  -> "review queue"
-    <  0.80  -> "ignored"
+    >= 0.60  -> "review queue"
+    <  0.60  -> "ignored"
 
 Confidence is the selected candidate's hybrid re-rank score (it already fuses
 semantic, lexical, context, history, and quote-probability). This module is a

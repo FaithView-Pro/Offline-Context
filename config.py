@@ -22,10 +22,28 @@ EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 EMBED_DIM = 384
 # bge-small-en-v1.5 expects this instruction prefix on *queries* only.
 QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
-WHISPER_MODEL = "small"          # faster-whisper model id; use "small.en" for English-only
+WHISPER_MODEL = "small.en"       # faster-whisper model id; upgraded from "base" (see benchmark)
 WHISPER_LANGUAGE = "en"          # set None for auto-detect
-WHISPER_BEAM_SIZE = 5
+WHISPER_BEAM_SIZE = 1            # paired with small.en + widened 8s window per benchmark
+# small.en beam=1 on 10s tile (8s + 2s overlap) = ~3.7s Whisper time measured,
+# leaving ~4.3s for the rest of the pipeline (buffer → ONNX → FAISS → rerank → score).
+# Window widened from 4s to 8s (10s tiles) to create that margin --
+# without the widen, small.en alone at 4s would lag. See benchmark_live_chunk.py.
+WHISPER_MIN_AVG_LOGPROB = -0.8   # per-segment min avg_logprob (skip below = likely hallucinated)
+WHISPER_MAX_NO_SPEECH_PROB = 0.6 # per-segment max no_speech_prob (skip >= = likely silence)
 WHISPER_VAD_FILTER = True
+# Prime the decoder with scripture-flavored vocabulary so live ASR doesn't
+# transliterate "thee/thou/behold" to "the/thou/behold-whatever". Whisper treats
+# ``initial_prompt`` as the *previous context* of a hypothetical transcript, so a
+# couple of representative sentences bias decoding toward KJV/NKJV diction without
+# forcing any specific verse. Set to "" to disable. Loop-tunable from the CLI
+# (``--initial-prompt`` on server.py / live_pipeline.py).
+WHISPER_INITIAL_PROMPT = (
+    "The Bible says, Behold, I will put my spirit within you, and ye shall live. "
+    "Verily, verily, I say unto you, he that believeth on the Son hath everlasting "
+    "life. The Lord is my shepherd; I shall not want. Beloved, let us love one "
+    "another, for love is of God."
+)
 CROSS_ENCODER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 # --- Offline behaviour -----------------------------------------------------
@@ -57,10 +75,10 @@ USE_CROSS_ENCODER = False        # opt-in; needs extra model download
 
 # --- Stage 6: confidence banding ------------------------------------------
 BAND_AUTOPILOT = "autopilot-eligible"   # >= 0.96
-BAND_REVIEW = "review queue"            # 0.80 .. <0.96
-BAND_IGNORED = "ignored"                # < 0.80
+BAND_REVIEW = "review queue"            # 0.60 .. <0.96
+BAND_IGNORED = "ignored"                # < 0.60
 AUTOPILOT_THRESHOLD = 0.96
-REVIEW_THRESHOLD = 0.80
+REVIEW_THRESHOLD = 0.60                 # was 0.80; lowered to surface more live detections
 
 # --- Stage 2: sentence buffering ------------------------------------------
 BUFFER_NEXT_WORDS = 12           # lookahead words merged into the current window
@@ -77,6 +95,9 @@ class Settings:
     whisper_language: str | None = WHISPER_LANGUAGE
     whisper_beam_size: int = WHISPER_BEAM_SIZE
     whisper_vad_filter: bool = WHISPER_VAD_FILTER
+    whisper_initial_prompt: str = WHISPER_INITIAL_PROMPT
+    whisper_min_avg_logprob: float = WHISPER_MIN_AVG_LOGPROB
+    whisper_max_no_speech_prob: float = WHISPER_MAX_NO_SPEECH_PROB
     quote_threshold: float = QUOTE_THRESHOLD
     top_k: int = TOP_K
     use_cross_encoder: bool = USE_CROSS_ENCODER
