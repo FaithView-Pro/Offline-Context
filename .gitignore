@@ -37,3 +37,12 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Large binary files (download/generate separately)
+index/verses.faiss
+index/verses_meta.json
+onnx_model/
+quote_classifier_model/
+quote_classifier_model_checkpoints/
+win_cli_search/index/
+*.exe
