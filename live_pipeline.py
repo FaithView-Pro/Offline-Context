@@ -29,6 +29,7 @@ path.
 from __future__ import annotations
 
 import os
+import re
 import time
 from dataclasses import dataclass, asdict, field
 from typing import Optional, Callable, Any
@@ -43,7 +44,8 @@ from context import SermonContext
 from transcribe import Segment
 from buffer import buffer_segments, Window
 from retrieve import Retriever
-from live_transcribe import LiveTranscriber, AudioSource
+from live_transcribe import AudioSource, WhisperTranscriptionSource
+from transcription_source import TranscriptionSource
 
 
 @dataclass
@@ -106,6 +108,8 @@ class LivePipeline:
         whisper_initial_prompt: Optional[str] = None,
         condition_on_previous_text: bool = False,
         preprocess: bool = True,
+        transcription_source_type: str = "whisper",
+        mode: str = "semi_autopilot",
     ):
         self.on_transcript = on_transcript or (lambda s: None)
         self.on_detection = on_detection or (lambda e: None)
@@ -156,10 +160,31 @@ class LivePipeline:
         self._detector = None
         self._retriever = None
         self._db = None
-        self._transcriber = None
+        self._transcription_source: Optional[TranscriptionSource] = None
+        self._transcription_source_type = transcription_source_type
+        self.mode = mode  # "autopilot" | "semi_autopilot" | "manual"
         self._running_windows: list[Window] = []   # accumulating live windows
         self._processed_windows: set[int] = set()  # window.index already routed
         self._running_windows_accum: list[Segment] = []
+        self._cue_transcribing: bool = True  # False when manual mode pauses
+
+        # --- Minimal CUE accumulator: joins text across segment boundaries ---
+        # When a cue-phrase window opens, subsequent CUE windows (even after
+        # a transcription pause) extend the candidate text so retrieval sees
+        # the full spoken quote, not just the first fragment.
+        self._cue_accum = None  # {"full": str, "candidate": str, "win": Window} or None
+        # trigger-starter patterns: if a new CUE window starts with one of
+        # these while accumulator is open, it signals a fresh quote
+        self._cue_new_trigger_re: re.Pattern = re.compile(
+            r"^\s*(the bible says|scripture says|it is written|"
+            r"paul writes|paul says|the word says|as it is written|"
+            r"jesus said|the lord says|thus saith the lord|"
+            r"the scripture says|the psalmist says|david writes|"
+            r"moses writes|the prophet says|god says|and it says|"
+            r"and paul writes|for it is written|in the book of)\b",
+            re.IGNORECASE,
+        )
+        self._cue_accum_word_cap: int = 35  # generous safety valve
 
     # ---- lazy resource setup (shared by live mic + file dry-run) ----
     def _ensure_resources(self):
@@ -184,11 +209,16 @@ class LivePipeline:
         kind = kind or "heuristic"
         if kind == "onnx":
             here = config.HERE
-            self._detector = quote_detect.get_detector(
-                "onnx",
-                model_path=os.path.join(here, "onnx_model", "model.onnx"),
-                tokenizer_path=os.path.join(here, "onnx_model"),
-            )
+            try:
+                self._detector = quote_detect.get_detector(
+                    "onnx",
+                    model_path=os.path.join(here, "onnx_model", "model.onnx"),
+                    tokenizer_path=os.path.join(here, "onnx_model"),
+                )
+                print("[pipeline] ONNX quote detector loaded", flush=True)
+            except Exception as exc:
+                print(f"[pipeline] ONNX load failed ({exc}); falling back to heuristic", flush=True)
+                self._detector = quote_detect.get_detector("heuristic")
         elif kind == "semantic":
             self._detector = quote_detect.get_detector("semantic", retriever=self._retriever)
         else:
@@ -200,11 +230,28 @@ class LivePipeline:
     def start(self, source: AudioSource, quote_detector_kind: str = "onnx"):
         self.quote_detector_kind = quote_detector_kind
         self._ensure_resources()
-        # explicit pipeline kwarg wins, else fall back to Settings.whisper_initial_prompt
+        self._start_transcription_source(source)
+
+    def _start_transcription_source(self, audio_source: AudioSource):
+        if self._transcription_source is not None:
+            try:
+                self._transcription_source.stop()
+            except Exception:
+                pass
+
         prompt = self.whisper_initial_prompt if self.whisper_initial_prompt is not None \
             else self.s.whisper_initial_prompt
-        self._transcriber = LiveTranscriber(
-            on_segment=self._on_new_segment,
+
+        if self._transcription_source_type == "deepgram":
+            self._transcription_source = self._build_deepgram_source()
+        else:
+            self._transcription_source = self._build_whisper_source(prompt)
+
+        self._transcription_source.start(audio_source, self._on_new_segment,
+                                          on_interim=self.on_transcript)
+
+    def _build_whisper_source(self, prompt: Optional[str] = None) -> WhisperTranscriptionSource:
+        return WhisperTranscriptionSource(
             model_name=self.s.whisper_model,
             chunk_seconds=self.chunk_seconds,
             overlap_seconds=self.overlap_seconds,
@@ -216,19 +263,56 @@ class LivePipeline:
             condition_on_previous_text=self.condition_on_previous_text,
             preprocess=self.preprocess,
         )
-        self._transcriber.start(source)
+
+    def _build_deepgram_source(self):
+        from deepgram_transcribe import DeepgramSource
+        return DeepgramSource()
+
+    def set_transcription_source(self, source_type: str, audio_source: AudioSource) -> str:
+        """Hot-swap the active transcription source live.
+
+        Stops the current source, creates a new one of ``source_type``
+        ("whisper" | "deepgram"), wires it into the same segment callback, and
+        starts it against ``audio_source``.
+
+        Returns the name of the now-active source.
+        """
+        self._transcription_source_type = source_type
+        self._start_transcription_source(audio_source)
+        return self._transcription_source.name if self._transcription_source else source_type
+
+    def set_mode(self, mode: str) -> None:
+        """Set operator mode: "autopilot", "semi_autopilot", or "manual"."""
+        self.mode = mode
+
+    def pause_transcription(self) -> None:
+        """Pause the active transcription source (used by Manual mode)."""
+        self._cue_transcribing = False
+        if self._transcription_source:
+            try:
+                self._transcription_source.stop()
+            except Exception:
+                pass
+
+    def resume_transcription(self, audio_source: AudioSource) -> None:
+        """Resume transcription after a pause."""
+        self._cue_transcribing = True
+        self._start_transcription_source(audio_source)
 
     def stop(self):
-        if self._transcriber:
-            self._transcriber.stop()
+        if self._transcription_source:
+            self._transcription_source.stop()
 
     # Async feed: each freshly transcribed Segment arrives here
     def _on_new_segment(self, seg: Segment):
+        if not self._cue_transcribing:
+            return
         # rolling transcript callback
         try:
             self.on_transcript(seg)
         except Exception as exc:
             print(f"[pipeline] on_transcript error: {exc}")
+
         # buffer.feed works on a LIST of segments; we rebuild windows from the
         # running buffer. Buffer.py is unchanged and stateless per call, so we
         # just accumulate segments and re-buffer each tick (cheap: it's just
@@ -251,16 +335,19 @@ class LivePipeline:
         )
 
         if result.intent == intent_router.EXPLICIT_REF:
+            self._close_cue_accum()
             self._handle_explicit(result)
             return
         if result.intent == intent_router.NAV_COMMAND:
+            self._close_cue_accum()
             self._handle_nav(result)
             return
         if result.intent == intent_router.CLEAR_COMMAND:
+            self._close_cue_accum()
             self._handle_clear(result)
             return
-        # CUE_PHRASE -> full search pipeline
-        self._handle_cue(w)
+        # CUE_PHRASE -> feed into accumulator so text joins across pauses
+        self._extend_cue_accum(w)
 
     # ---- EXPLICIT_REF / NAV resolve via direct lookup, no FAISS ----
     def _emit_resolve(self, result, source_tag: str) -> None:
@@ -294,78 +381,194 @@ class LivePipeline:
         intent_router.clear_display_keeps_anchor(self.session)
         self.on_display(DisplayEvent(clear=True, source="clear"))
 
-    # ---- CUE_PHRASE -> detect -> retrieve -> rerank -> score ----
-    def _handle_cue(self, w: Window) -> None:
+    # ---- CUE accumulator: joins text across pauses for full-quote retrieval ----
+    _CUE_END_RE = re.compile(r"[.!?]['\"\']?\s*$")
+
+    _CLAUSE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+    _TAIL_WINDOW_WORDS = 20
+
+    def _extend_cue_accum(self, w: Window) -> None:
+        """Append window text to the live CUE accumulator; search at each step."""
         text = w.candidate_text or ""
         if len(text.split()) < self.rescue_min_words:
             return
+
+        if self._cue_accum is not None:
+            # New trigger phrase starting while accumulator is open →
+            # close the old quote and start fresh
+            if self._cue_new_trigger_re.match(text.lower()):
+                self._close_cue_accum()
+                # fall through to open new accumulator below
+            else:
+                # Extend existing accumulator
+                self._cue_accum["full"] += " " + (w.text or text)
+                self._cue_accum["candidate"] += " " + text
+                # Check sentence-ending punctuation in latest chunk
+                has_end = bool(self._CUE_END_RE.search(text))
+                self._run_accumulated_search(is_final=has_end)
+                if has_end:
+                    self._cue_accum = None
+                return
+
+        # Open a fresh accumulator
+        self._cue_accum = {
+            "full": w.text or text,
+            "candidate": text,
+            "win": w,
+        }
+        has_end = bool(self._CUE_END_RE.search(text))
+        self._run_accumulated_search(is_final=has_end)
+        if has_end:
+            self._cue_accum = None
+
+    def _close_cue_accum(self) -> None:
+        """Close the accumulator when a non-CUE intent arrives."""
+        if self._cue_accum is not None:
+            # Run one final search before closing (in case the last chunk
+            # added context that produces a better match)
+            self._run_accumulated_search(is_final=True)
+            self._cue_accum = None
+
+    def _run_accumulated_search(self, is_final: bool = False) -> None:
+        """Run the full CUE pipeline on whatever text the accumulator holds.
+
+        For finalized text, runs retrieval on multiple sub-windows (full text,
+        tail window, clause-split windows) and picks the variant with the
+        highest confidence. For intermediate (non-final) text, runs a single
+        full-text retrieval for speed.
+        """
+        acc = self._cue_accum
+        if acc is None:
+            return
+        candidate_text = acc["candidate"]
+        word_count = len(candidate_text.split())
+        if word_count < self.rescue_min_words:
+            return
+        if word_count >= self._cue_accum_word_cap:
+            is_final = True  # force-finalize at word cap
+            self._cue_accum = None
+
         try:
-            qp = self._detector.score(text)
+            qp = self._detector.score(candidate_text)
         except Exception as exc:
             print(f"[pipeline] quote detector error: {exc}")
             return
 
-        # Decide whether to spend retrieval on this window.
         run_retrieval = qp >= self.quote_threshold
         if not run_retrieval and self.live_rescue:
             if self._rescue_heur is None:
                 self._rescue_heur = quote_detect.get_detector("heuristic")
             try:
-                heur = self._rescue_heur.score(text)
+                heur = self._rescue_heur.score(candidate_text)
             except Exception:
                 heur = 0.0
             if heur >= self.rescue_heuristic_floor:
                 run_retrieval = True
         if not run_retrieval:
-            return  # not flagged as scripture -> do not spend retrieval on it
+            return
 
-        try:
-            candidates = self._retriever.search_one(text, top_k=self.top_k)
-        except Exception as exc:
-            print(f"[pipeline] retrieval error: {exc}")
-            return
-        if not candidates:
-            return
-        # NOTE: the live-rescue used to also require retrieval top-1 cosine >=
-        # 0.80 before surfacing. On noisy mic-style speech (Whisper fragmentation)
-        # a genuine verse can land at ~0.78 cosine, just under that bar, so the
-        # extra top1 gate suppressed real detections. The hybrid rerank score
-        # (which already weighs_semantic 0.45 * cosine + lexical + quote_prob)
-        # plus the single ``live_confidence_floor`` is a cleaner filter -- one
-        # knob, banded by score.py for the UI to color-code.
+        query_variants = self._build_query_variants(candidate_text, is_final)
+        print(f"[pipeline] detection search: is_final={is_final} qp={qp:.3f} "
+              f"variants={len(query_variants)} text=\"{candidate_text[:60]}...\"", flush=True)
 
-        ranked = rerank_mod.rerank_candidates(
-            candidates, text, qp, self.ctx,
-            self.accepted_keys, self.accepted_books,
-            weights=self.s.weights, cross_encoder=None,
-        )
-        selected, _ = rerank_mod.select_representative(ranked)
-        if selected is None:
+        vrefs: dict[str, int] = {}
+        best_conf = -1.0
+        best_ev: Optional[DetectionEvent] = None
+        best_selected: Optional[Any] = None
+
+        for qtext in query_variants:
+            try:
+                cands = self._retriever.search_one(qtext, top_k=self.top_k)
+            except Exception as exc:
+                print(f"[pipeline] retrieval error: {exc}")
+                continue
+            if not cands:
+                continue
+
+            ranked = rerank_mod.rerank_candidates(
+                cands, candidate_text, qp, self.ctx,
+                self.accepted_keys, self.accepted_books,
+                weights=self.s.weights, cross_encoder=None,
+            )
+            selected, _ = rerank_mod.select_representative(ranked)
+            if selected is None:
+                continue
+            conf = score_mod.confidence_for(selected)
+
+            vrefs[selected.candidate.key] = vrefs.get(selected.candidate.key, 0) + 1
+
+            if conf > best_conf:
+                best_conf = conf
+                best_selected = selected
+                best_ev = DetectionEvent(
+                    reference=selected.candidate.reference,
+                    translation=selected.candidate.translation,
+                    text=selected.candidate.text,
+                    confidence=conf,
+                    confidence_band=score_mod.band(conf),
+                    transcript_snippet=candidate_text,
+                    timestamp=time.time(),
+                )
+
+        if best_ev is None:
             return
-        confidence = score_mod.confidence_for(selected)
-        # Live mode surfaces detections at live_confidence_floor (NOT the
-        # batch REVIEW_THRESHOLD of 0.60) -- a live operator console benefits
-        # from seeing more candidates to manually pick, banded/color-coded.
-        # Floor is configurable, not hardcoded at the call site.
-        if confidence < self.live_confidence_floor:
+
+        if best_selected is not None:
+            agree_count = vrefs.get(best_selected.candidate.key, 1)
+            if agree_count >= 2:
+                boost = min(0.12, 0.03 * (agree_count - 1))
+                best_conf = min(1.0, best_conf + boost)
+                best_ev = DetectionEvent(
+                    reference=best_selected.candidate.reference,
+                    translation=best_selected.candidate.translation,
+                    text=best_selected.candidate.text,
+                    confidence=best_conf,
+                    confidence_band=score_mod.band(best_conf),
+                    transcript_snippet=candidate_text,
+                    timestamp=time.time(),
+                )
+
+        if best_conf < self.live_confidence_floor:
             return
-        band = score_mod.band(confidence)
-        event = DetectionEvent(
-            reference=selected.candidate.reference,
-            translation=selected.candidate.translation,
-            text=selected.candidate.text,
-            confidence=confidence,
-            confidence_band=band,
-            transcript_snippet=text,
-            timestamp=time.time(),
-        )
-        # NOTE: we do NOT auto-anchor current_reference on a cue detection --
-        # the operator has only seen a *candidate*. Anchor happens later when
-        # the operator hits "Present" (server.py calls note_display).
-        # We DO update the re-ranker's running context so subsequent cue
-        # candidates benefit from history (matches the batch engine behavior).
-        self.ctx.add_candidate(selected.candidate, w.text)
-        self.on_detection(event)
+
+        print(f"[pipeline] detection: {best_ev.reference} ({best_ev.translation}) "
+              f"conf={best_conf:.3f} band={best_ev.confidence_band}", flush=True)
+
+        self.on_detection(best_ev)
+
+        if is_final and best_selected is not None and acc is not None:
+            self.ctx.add_candidate(best_selected.candidate, acc["full"])
+
+        if self.mode == "autopilot" and is_final and best_ev.confidence_band == "autopilot-eligible":
+            self.operator_present(
+                reference=best_ev.reference,
+                translation=best_ev.translation,
+                text=best_ev.text,
+                source="autopilot",
+            )
+
+    def _build_query_variants(self, text: str, is_final: bool) -> list[str]:
+        variants: list[str] = [text]
+        if not is_final:
+            return variants
+        words = text.split()
+        if len(words) > self._TAIL_WINDOW_WORDS:
+            tail = " ".join(words[-self._TAIL_WINDOW_WORDS:]).strip()
+            if tail and tail != text and len(tail.split()) >= self.rescue_min_words:
+                variants.append(tail)
+        clauses = self._CLAUSE_SPLIT_RE.split(text)
+        for clause in clauses:
+            clause = clause.strip().rstrip(".,; ")
+            wc = len(clause.split())
+            if wc >= self.rescue_min_words and clause != text:
+                variants.append(clause)
+        seen: set[str] = set()
+        uniq: list[str] = []
+        for v in variants:
+            if v not in seen:
+                seen.add(v)
+                uniq.append(v)
+        return uniq
 
     # =================================================================
     # Operator actions (called by the server in Milestone 4)
@@ -404,7 +607,6 @@ class LivePipeline:
 # ===========================================================================
 # Small reference-string parser ("Romans 8:28" / "2 Kings 6:2") -> tuple
 # ===========================================================================
-import re
 
 _REF_STR_RE = re.compile(
     rf"\b(?P<book>(?:[1-3]\s+|[IV]{{1,3}}\s+|first\s+|second\s+|third\s+)?"
@@ -470,6 +672,8 @@ def _build_console_pipeline(args):
         whisper_initial_prompt=args.initial_prompt,
         condition_on_previous_text=bool(args.condition_previous_text),
         preprocess=not args.no_preprocess,
+        transcription_source_type=getattr(args, "source", "whisper"),
+        mode=getattr(args, "mode", "semi_autopilot"),
     )
 
 
@@ -504,7 +708,7 @@ def _cli():
 
     if args.file:
         # offline, synchronous drive over the file (same code path as live mic)
-        from live_transcribe import FileSource
+        from live_transcribe import FileSource, LiveTranscriber
         p = _build_console_pipeline(args)
         p._ensure_resources()
         p.quote_detector_kind = args.detector

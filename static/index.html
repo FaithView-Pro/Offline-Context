@@ -70,6 +70,20 @@
     color:#fff;
   }
   .topnav-right{ display:flex; align-items:center; gap:8px; }
+  .source-toggle, .mode-toggle{
+    display:flex; align-items:center;
+    border-radius:999px; overflow:hidden;
+    border:1px solid var(--border);
+    background: var(--bg-panel-alt);
+  }
+  .source-toggle button, .mode-toggle button{
+    padding:6px 12px; font-size:11px; font-weight:700;
+    border:none; cursor:pointer; color:var(--text-muted);
+    background:transparent;
+  }
+  .source-toggle button.active, .mode-toggle button.active{
+    background: var(--accent-orange); color:#fff;
+  }
   .status-pill{
     display:flex; align-items:center; gap:6px;
     padding:7px 14px; border-radius:999px;
@@ -263,7 +277,7 @@
     height:44%;
     min-height:280px;
     display:grid;
-    grid-template-columns: 1.6fr 1fr;
+    grid-template-columns: 1.4fr 0.45fr 1fr 0.9fr;
     gap:1px;
     background: var(--border);
     border-top:1px solid var(--border);
@@ -325,6 +339,73 @@
   }
   .verse-row.active .verse-text{ color: var(--text-primary); font-weight:600; }
 
+  /* Manual search panel (bottom bar) */
+  .manual-search-panel{
+    background: var(--bg-app);
+    display:flex; flex-direction:column; min-height:0;
+  }
+  .manual-search-toolbar{
+    display:flex; align-items:center; gap:6px;
+    padding: 10px 12px; flex-shrink:0;
+  }
+  .manual-search-input{
+    flex:1;
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    border-radius: var(--radius-s);
+    padding:6px 10px; font-size:12px;
+    color: var(--text-primary);
+  }
+  .manual-search-input::placeholder{ color: var(--text-muted); }
+  .manual-search-btn{
+    padding:6px 12px; border-radius: var(--radius-s);
+    background: var(--accent-orange); color:#fff;
+    border:none; font-size:11px; font-weight:600; cursor:pointer;
+  }
+  .manual-search-results{
+    flex:1; overflow-y:auto;
+    padding: 0 12px 10px;
+  }
+  .msr-card{
+    border-top: 1px solid var(--border-soft);
+    padding: 8px 0;
+  }
+  .msr-card:first-child{ border-top:none; }
+  .msr-ref{ font-size:12px; font-weight:700; }
+  .msr-score{ font-size:10px; color: var(--text-muted); }
+  .msr-text{ font-size:11px; color: var(--text-secondary); line-height:1.35; margin:3px 0 6px; }
+  .msr-card .detect-actions{ margin-top:4px; }
+  .msr-card .btn{ padding:5px 10px; font-size:11px; }
+
+  /* Search panel */
+  .search-bar{
+    display:flex; align-items:center; gap:6px;
+    padding: 0 16px 10px; flex-shrink:0;
+  }
+  .search-input{
+    flex:1;
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    border-radius: var(--radius-s);
+    padding:7px 12px; font-size:12px;
+    color: var(--text-primary);
+  }
+  .search-input::placeholder{ color: var(--text-muted); }
+  .search-btn{
+    padding:7px 14px; border-radius: var(--radius-s);
+    background: var(--accent-orange); color:#fff;
+    border:none; font-size:12px; font-weight:600; cursor:pointer;
+  }
+  .search-result{
+    border-top: 1px solid var(--border-soft);
+    padding: 10px 0;
+  }
+  .search-result:first-child{ border-top:none; }
+  .search-result-ref{ font-size:13px; font-weight:700; }
+  .search-result-score{ font-size:11px; color: var(--text-muted); }
+  .search-result-text{ font-size:12px; color: var(--text-secondary); line-height:1.4; margin:4px 0 8px; }
+  .search-result .detect-actions{ margin-top:6px; }
+
   .preview-panel{
     background: var(--bg-app);
     display:flex; flex-direction:column; min-height:0;
@@ -362,6 +443,15 @@
       <button class="nav-tab">Songs</button>
     </div>
     <div class="topnav-right">
+      <div class="mode-toggle" id="mode-toggle">
+        <button data-mode="semi_autopilot" class="active">Semi</button>
+        <button data-mode="autopilot">Auto</button>
+        <button data-mode="manual">Man</button>
+      </div>
+      <div class="source-toggle" id="source-toggle">
+        <button data-source="whisper" class="active">Whisper</button>
+        <button data-source="deepgram">DG</button>
+      </div>
       <div class="status-pill" id="status-pill"><span class="dot"></span>LIVE</div>
       <div class="status-pill">BLACK</div>
       <div class="icon-btn">
@@ -413,6 +503,11 @@
         <span class="panel-title">Recent detections</span>
         <button class="panel-action" id="clear-detections">✕ Clear all</button>
       </div>
+      <div class="search-bar" style="padding:6px 16px 8px; border-bottom:1px solid var(--border-soft);">
+        <input class="search-input" id="search-input" placeholder="Search verses…" autocomplete="off">
+        <button class="search-btn" id="search-btn">Find</button>
+      </div>
+      <div class="panel-body" id="search-results" style="display:none;"></div>
       <div class="panel-body" id="detections-body">
         <div class="empty">no detections yet</div>
       </div>
@@ -481,12 +576,41 @@
         </select>
         <div class="square-btn" id="btn-prev-chapter" title="Previous chapter">‹</div>
         <div class="square-btn" id="btn-next-chapter" title="Next chapter">›</div>
-        <div class="ref-input" id="bible-ref-input" placeholder="e.g. Romans 8:28"></div>
+        <div class="ref-input" id="bible-ref-input" placeholder="Gen 1:2 or Romans 8" autocomplete="off" list="bible-book-list"></div>
+        <datalist id="bible-book-list"></datalist>
         <div class="square-btn" id="btn-prev-verse" title="Previous verse">◂</div>
         <div class="square-btn" id="btn-next-verse" title="Next verse">▸</div>
       </div>
       <div class="bible-verses" id="bible-verses">
         <div class="empty">select a chapter</div>
+      </div>
+    </div>
+
+    <!-- Bible Reference Lookup -->
+    <div class="bible-panel" id="ref-lookup-panel">
+      <div class="panel-head">
+        <span class="panel-title" style="font-size:13px;">Lookup</span>
+      </div>
+      <div class="bible-toolbar" style="padding:8px 12px;">
+        <input class="ref-input" id="bible-ref-input2" placeholder="Gen 1:2 or Romans 8" autocomplete="off" list="bible-book-list2" style="width:100%;">
+        <datalist id="bible-book-list2"></datalist>
+      </div>
+      <div class="bible-verses" id="ref-lookup-verses" style="padding:0 12px 10px;">
+        <div class="empty">enter a reference</div>
+      </div>
+    </div>
+
+    <!-- Manual Search -->
+    <div class="manual-search-panel">
+      <div class="panel-head">
+        <span class="panel-title" style="font-size:13px;">Manual Search</span>
+      </div>
+      <div class="manual-search-toolbar">
+        <input class="manual-search-input" id="ms-input" placeholder="Type a phrase…" autocomplete="off">
+        <button class="manual-search-btn" id="ms-btn">Find</button>
+      </div>
+      <div class="manual-search-results" id="ms-results">
+        <div class="empty">search results appear here</div>
       </div>
     </div>
 
@@ -569,6 +693,10 @@ function connect(){
       case "display_update": setDisplay(m); break;
       case "queue_update": queue = m.queue || []; renderQueue(); break;
       case "session_update": updateSession(m); break;
+      case "source_update": updateSource(m.source); break;
+      case "mode_update": updateMode(m.mode); break;
+      case "transcript_clear": clearTranscript(); break;
+      case "detections_clear": clearDetections(); break;
     }
   };
 }
@@ -588,6 +716,10 @@ function addTranscript(m){
   body.appendChild(line);
   while (body.children.length > 200) body.removeChild(body.firstChild);
   body.scrollTop = body.scrollHeight;
+}
+function clearTranscript(){
+  const body = $("#transcript-body");
+  body.innerHTML = '<div class="empty">transcript cleared</div>';
 }
 
 // ---- Detections panel ----
@@ -627,6 +759,13 @@ $("#clear-detections").onclick = () => {
   const body = $("#detections-body");
   body.innerHTML = '<div class="empty">no detections yet</div>';
 };
+function clearDetections(){
+  const body = $("#detections-body");
+  body.innerHTML = '<div class="empty">no detections yet</div>';
+  $("#search-results").style.display = "none";
+  body.style.display = "";
+  $("#search-input").value = "";
+}
 
 // ---- Display panel ----
 function setDisplay(m){
@@ -773,11 +912,213 @@ $("#btn-next-chapter").onclick = () => {
   const c = (session.chapter || 1) + 1;
   loadChapter(session.translation || "NKJV", session.book || "Genesis", c, 1);
 };
+// ---- Bible reference input with autocomplete and Chapter:Verse support ----
+const BIBLE_BOOKS = [
+  "Genesis","Exodus","Leviticus","Numbers","Deuteronomy",
+  "Joshua","Judges","Ruth","1 Samuel","2 Samuel","1 Kings","2 Kings",
+  "1 Chronicles","2 Chronicles","Ezra","Nehemiah","Esther","Job",
+  "Psalms","Proverbs","Ecclesiastes","Song of Solomon","Isaiah",
+  "Jeremiah","Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos",
+  "Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah","Haggai",
+  "Zechariah","Malachi","Matthew","Mark","Luke","John","Acts",
+  "Romans","1 Corinthians","2 Corinthians","Galatians","Ephesians",
+  "Philippians","Colossians","1 Thessalonians","2 Thessalonians",
+  "1 Timothy","2 Timothy","Titus","Philemon","Hebrews","James",
+  "1 Peter","2 Peter","1 John","2 John","3 John","Jude","Revelation"
+];
+const bookDatalist = $("#bible-book-list");
+BIBLE_BOOKS.forEach(b => { const o = document.createElement("option"); o.value = b; bookDatalist.appendChild(o); });
+
+let _bibleLookupRef = null;  // {book, chapter, verse} persisted across version changes
+
+$("#bible-ref-input").onkeydown = function(ev){
+  if (ev.key === "Enter"){ _doReferenceLookup(this.value.trim(), "bible-verses", true); }
+};
+
+function _doReferenceLookup(ref, versesDivId, updateMain){
+  if (!ref) return;
+  // Book Chapter:Verse
+  let m = ref.match(/^(.+?)\s+(\d+):(\d+)$/);
+  if (m){
+    _bibleLookupRef = { book: m[1], chapter: parseInt(m[2]), verse: parseInt(m[3]) };
+    if (updateMain) $("#bible-ref-input").value = _bibleLookupRef.book + " " + _bibleLookupRef.chapter + ":" + _bibleLookupRef.verse;
+    _lookupAndRender(_bibleLookupRef.book, _bibleLookupRef.chapter, _bibleLookupRef.verse, versesDivId);
+    return;
+  }
+  // Book Chapter
+  m = ref.match(/^(.+?)\s+(\d+)$/);
+  if (m){
+    _bibleLookupRef = { book: m[1], chapter: parseInt(m[2]), verse: null };
+    if (updateMain) $("#bible-ref-input").value = _bibleLookupRef.book + " " + _bibleLookupRef.chapter;
+    _lookupAndRender(_bibleLookupRef.book, _bibleLookupRef.chapter, 1, versesDivId);
+    return;
+  }
+  toast("enter 'Book Chapter' or 'Book Chapter:Verse'");
+}
+
+async function _lookupAndRender(book, chapter, verse, versesDivId){
+  const ver = session.translation || "NKJV";
+  try {
+    const r = await fetch(API + "/bible/" + encodeURIComponent(ver) + "/" + encodeURIComponent(book) + "/" + chapter);
+    const data = await r.json();
+    if (!data.verses){ toast("no verses found"); return; }
+    const body = $("#" + versesDivId);
+    body.innerHTML = "";
+    const activeV = verse || 1;
+    for (const v of data.verses){
+      const row = document.createElement("div");
+      row.className = "verse-row";
+      if (v.verse === activeV) row.classList.add("active");
+      row.innerHTML =
+        '<span class="verse-num">' + v.verse + '</span>' +
+        '<span class="verse-text">' + escapeHtml(v.text) + '</span>';
+      row.onclick = () => {
+        setPreview(v.text, book + " " + chapter + ":" + v.verse + " (" + data.translation + ")");
+        body.querySelectorAll(".verse-row").forEach(r => r.classList.remove("active"));
+        row.classList.add("active");
+      };
+      body.appendChild(row);
+    }
+    body.scrollTop = 0;
+    // Update main session state too
+    if (data.book) session.translation = data.translation;
+    if (data.book) session.book = data.book;
+    if (data.chapter) session.chapter = data.chapter;
+    if (verse) session.verse = verse;
+  } catch(e){ toast("lookup error"); }
+}
+
+
 $("#version-select").onchange = function(){
-  if (session.book){
+  if (_bibleLookupRef && _bibleLookupRef.book){
+    const ver = this.value;
+    loadChapter(ver, _bibleLookupRef.book, _bibleLookupRef.chapter, _bibleLookupRef.verse || 1);
+    _lookupAndRender(_bibleLookupRef.book, _bibleLookupRef.chapter, _bibleLookupRef.verse || 1, "ref-lookup-verses");
+  } else if (session.book){
     loadChapter(this.value, session.book, session.chapter, session.verse);
   }
 };
+
+// Second reference input (Lookup panel)
+BIBLE_BOOKS.forEach(b => { const o = document.createElement("option"); o.value = b; $("#bible-book-list2").appendChild(o); });
+$("#bible-ref-input2").onkeydown = function(ev){
+  if (ev.key === "Enter"){ _doReferenceLookup(this.value.trim(), "ref-lookup-verses", false); }
+};
+// ---- Source toggle (Whisper / Deepgram) ----
+function updateSource(source){
+  const btns = $$("#source-toggle button");
+  btns.forEach(b => b.classList.toggle("active", b.dataset.source === source));
+}
+$$("#source-toggle button").forEach(btn => {
+  btn.onclick = () => {
+    const src = btn.dataset.source;
+    post("/transcription-source", {source: src}).then(r => {
+      if (r && r.source) toast("switched to " + r.source);
+      else if (r && r.error) toast(r.error);
+    });
+  };
+});
+
+// ---- Mode toggle (Semi / Auto / Manual) ----
+function updateMode(mode){
+  const btns = $$("#mode-toggle button");
+  btns.forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
+  const statusEl = $("#transcribe-status");
+  if (mode === "manual"){
+    statusEl.innerHTML = '<span class="mic-dot" style="background:var(--text-muted)"></span> Paused (Manual)';
+  } else {
+    statusEl.innerHTML = '<span class="mic-dot"></span> Listening…';
+  }
+}
+$$("#mode-toggle button").forEach(btn => {
+  btn.onclick = () => {
+    const m = btn.dataset.mode;
+    post("/mode", {mode: m}).then(r => {
+      if (r && r.mode) toast("mode: " + r.mode);
+    });
+  };
+});
+
+// ---- Search ----
+$("#search-btn").onclick = () => doSearch();
+$("#search-input").onkeydown = (ev) => {
+  if (ev.key === "Enter") doSearch();
+};
+async function doSearch(){
+  const q = $("#search-input").value.trim();
+  if (!q) return;
+  const resultsDiv = $("#search-results");
+  const detectBody = $("#detections-body");
+  resultsDiv.innerHTML = '<div class="empty">searching…</div>';
+  resultsDiv.style.display = "block";
+  detectBody.style.display = "none";
+  try {
+    const r = await fetch(API + "/search?q=" + encodeURIComponent(q) + "&top_k=10");
+    const data = await r.json();
+    if (data.error){ resultsDiv.innerHTML = '<div class="empty">'+escapeHtml(data.error)+'</div>'; return; }
+    if (!data.results || !data.results.length){
+      resultsDiv.innerHTML = '<div class="empty">no results</div>'; return;
+    }
+    resultsDiv.innerHTML = "";
+    for (const item of data.results){
+      const pct = Math.round((item.score||0)*100);
+      const card = document.createElement("div");
+      card.className = "search-result";
+      card.innerHTML =
+        '<div class="search-result-ref">' + escapeHtml((item.reference||"").toUpperCase()) + ' <span class="search-result-score">' + pct + '%</span></div>' +
+        '<div class="search-result-text">' + escapeHtml(item.text||"") + '</div>' +
+        '<div class="detect-actions">' +
+          '<button class="btn" data-act="queue">+ Add to queue</button>' +
+          '<button class="btn primary" data-act="present">▶ Present</button>' +
+        '</div>';
+      card.querySelector('[data-act="queue"]').onclick = () => addToQueue(item);
+      card.querySelector('[data-act="present"]').onclick = () => present(item);
+      resultsDiv.appendChild(card);
+    }
+  } catch(e){ resultsDiv.innerHTML = '<div class="empty">search error</div>'; }
+}
+$("#search-input").oninput = function(){
+  if (!this.value.trim()){
+    $("#search-results").style.display = "none";
+    $("#detections-body").style.display = "";
+  }
+};
+
+// ---- Manual Search panel (bottom bar) ----
+$("#ms-btn").onclick = () => doManualSearch();
+$("#ms-input").onkeydown = (ev) => {
+  if (ev.key === "Enter") doManualSearch();
+};
+async function doManualSearch(){
+  const q = $("#ms-input").value.trim();
+  if (!q) return;
+  const resultsDiv = $("#ms-results");
+  resultsDiv.innerHTML = '<div class="empty">searching…</div>';
+  try {
+    const r = await fetch(API + "/search?q=" + encodeURIComponent(q) + "&top_k=10");
+    const data = await r.json();
+    if (data.error){ resultsDiv.innerHTML = '<div class="empty">'+escapeHtml(data.error)+'</div>'; return; }
+    if (!data.results || !data.results.length){
+      resultsDiv.innerHTML = '<div class="empty">no results</div>'; return;
+    }
+    resultsDiv.innerHTML = "";
+    for (const item of data.results){
+      const pct = Math.round((item.score||0)*100);
+      const card = document.createElement("div");
+      card.className = "msr-card";
+      card.innerHTML =
+        '<div class="msr-ref">' + escapeHtml((item.reference||"").toUpperCase()) + ' <span class="msr-score">' + pct + '%</span></div>' +
+        '<div class="msr-text">' + escapeHtml(item.text||"") + '</div>' +
+        '<div class="detect-actions">' +
+          '<button class="btn" data-act="queue">+ Queue</button>' +
+          '<button class="btn primary" data-act="present">▶ Present</button>' +
+        '</div>';
+      card.querySelector('[data-act="queue"]').onclick = () => addToQueue(item);
+      card.querySelector('[data-act="present"]').onclick = () => present(item);
+      resultsDiv.appendChild(card);
+    }
+  } catch(e){ resultsDiv.innerHTML = '<div class="empty">search error</div>'; }
+}
 $("#bible-ref-input").onkeydown = function(ev){
   if (ev.key === "Enter"){
     const ref = this.value.trim();

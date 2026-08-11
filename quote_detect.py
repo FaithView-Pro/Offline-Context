@@ -83,6 +83,9 @@ THEOLOGICAL = {
     "stone", "rock", "mountain", "river", "water", "fire", "wind", "storm",
     "captivity", "exile", "wilderness", "desert", "jordan", "jerusalem",
     "zion", "bethlehem", "nazareth", "galilee", "egypt", "babylon",
+    "lawlessness", "lawless", "depart", "declare", "declares", "declared",
+    "evildoers", "prophesy", "prophesied", "miracles", "cast", "demons",
+    "mighty", "works", "enter", "heaven", "father", "will", "son",
 }
 
 # --- Non-scripture markers (joke / news) used as a down-weight --------------
@@ -137,6 +140,12 @@ DIVINE_PATTERNS = [
     "the peace of god which surpasses", "whatever is true whatever is noble",
     "i have fought the good fight", "i have kept the faith",
     "there is therefore now no condemnation", "the law of the spirit of life",
+    "depart from me", "you who practice", "you who work", "you workers of",
+    "practice lawlessness", "i never knew you", "i will declare to them",
+    "i will declare", "not everyone who says to me", "lord lord",
+    "enter the kingdom of heaven", "on that day many will say",
+    "did we not prophesy in your name", "cast out demons in your name",
+    "i declare to you", "away from me",
 ]
 
 # Matches "Romans 8:28", "1 John 4:8", "III John 1:4", "Psalm 23"
@@ -398,7 +407,7 @@ if __name__ == "__main__":
         ("Breaking news: the stock market closed higher today after the report.", False),
         ("I think we should all try to be kinder to each other this week.", False),
         ("Turn in your Bibles to Ezekiel chapter thirty six.", False),
-        ("I will put my spirit within you and cause you to walk in my statutes.", False),  # documented recall gap
+        ("I will put my spirit within you and cause you to walk in my statutes.", True),
     ]
     print(f"{'PASS?':5} {'prob':>5}  sentence")
     ok = True

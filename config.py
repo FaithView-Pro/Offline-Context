@@ -9,6 +9,13 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
+# --- Load .env early so DEEPGRAM_API_KEY is available via os.environ ---------
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+except Exception:
+    pass
+
 # --- Paths -----------------------------------------------------------------
 HERE = os.path.dirname(os.path.abspath(__file__))
 AMP_PATH = os.path.join(HERE, "amplified.json")
@@ -74,14 +81,30 @@ CROSS_ENCODER_TOPN = 10          # re-score only this many candidates
 USE_CROSS_ENCODER = False        # opt-in; needs extra model download
 
 # --- Stage 6: confidence banding ------------------------------------------
-BAND_AUTOPILOT = "autopilot-eligible"   # >= 0.96
-BAND_REVIEW = "review queue"            # 0.60 .. <0.96
-BAND_IGNORED = "ignored"                # < 0.60
-AUTOPILOT_THRESHOLD = 0.96
+BAND_AUTOPILOT = "autopilot-eligible"   # >= AUTOPILOT_THRESHOLD
+BAND_REVIEW = "review queue"            # >= REVIEW_THRESHOLD .. < AUTOPILOT_THRESHOLD
+BAND_IGNORED = "ignored"                # < REVIEW_THRESHOLD
+AUTOPILOT_THRESHOLD = 0.60
 REVIEW_THRESHOLD = 0.60                 # was 0.80; lowered to surface more live detections
 
 # --- Stage 2: sentence buffering ------------------------------------------
 BUFFER_NEXT_WORDS = 12           # lookahead words merged into the current window
+
+# --- Speech-boundary tuning (keeps long clause lists in ONE segment) ----------
+# Whisper VAD: how much silence before faster-whisper splits a segment.
+# Raising this keeps in-sentence pauses (breaths, comma gaps in list-style
+# clauses like Romans 8:35) inside the same segment instead of fragmenting
+# the retrieval input.  Lower = more responsive for short sentences but
+# risks the original truncation bug. Tuned empirically: 700-900ms keeps
+# list clauses whole while still closing out short sentences promptly.
+WHISPER_VAD_MIN_SILENCE_MS = 800
+
+# Deepgram endpointing: same knob, Deepgram's equivalent of VAD silence
+# threshold.  Controls utterance_end_ms on the streaming connection.
+DEEPGRAM_UTTERANCE_END_MS = 800
+
+# --- Live transcription source (whisper offline or deepgram online) -----------
+TRANSCRIPTION_SOURCE = "whisper"  # "whisper" | "deepgram"
 
 
 @dataclass
@@ -103,3 +126,4 @@ class Settings:
     use_cross_encoder: bool = USE_CROSS_ENCODER
     offline: bool = OFFLINE
     weights: RerankWeights = field(default_factory=RerankWeights)
+    transcription_source: str = TRANSCRIPTION_SOURCE

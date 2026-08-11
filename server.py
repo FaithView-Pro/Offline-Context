@@ -78,6 +78,7 @@ import config  # noqa: E402
 from live_pipeline import LivePipeline, DetectionEvent, DisplayEvent, _parse_ref_string  # noqa: E402
 from transcribe import Segment  # noqa: E402
 from live_transcribe import MicSource, FileSource, _ensure_portaudio  # noqa: E402
+import search as search_mod  # noqa: E402
 
 
 # --- configurable live confidence floor (env-overridable) ------------------
@@ -100,6 +101,8 @@ class AppState:
         self.audio_stop = threading.Event()
         self.started = False
         self.lock = threading.Lock()        # guards queue mutations
+        self.transcription_source = "whisper"  # "whisper" | "deepgram"
+        self.mode = "semi_autopilot"           # "autopilot" | "semi_autopilot"
 
     def init_pipeline(self, **kwargs):
         # The pipeline's callbacks push events onto the asyncio loop so the WS
@@ -127,7 +130,10 @@ class AppState:
                             "translation": t, "book": b, "chapter": c, "verse": v})
         self.pipeline = LivePipeline(
             on_transcript=_on_transcript, on_detection=_on_detection,
-            on_display=_on_display, **kwargs,
+            on_display=_on_display,
+            transcription_source_type=self.transcription_source,
+            mode=self.mode,
+            **kwargs,
         )
 
     # ---- thread-safe broadcast: enqueue a coroutine onto the event loop ----
@@ -183,6 +189,14 @@ class PresentReq(BaseModel):
     text: Optional[str] = None
 
 
+class SourceReq(BaseModel):
+    source: str  # "whisper" | "deepgram"
+
+
+class ModeReq(BaseModel):
+    mode: str  # "autopilot" | "semi_autopilot" | "manual"
+
+
 # ===========================================================================
 # Queue + display operators (shared by REST + pipeline display events)
 # ===========================================================================
@@ -211,6 +225,47 @@ async def _broadcast_display(ev: Optional[DisplayEvent], clear: bool = False):
                                "translation": ev.translation, "text": ev.text})
 
 
+def _restart_audio_capture(source_type: str):
+    """Stop current transcription, create a new MicSource, start new source."""
+    # Stop the old MicSource FIRST to free the ALSA device
+    if STATE.source is not None:
+        try:
+            STATE.source.stop()
+        except Exception:
+            pass
+        STATE.source = None
+
+    # Stop the current pipeline transcription
+    if STATE.pipeline is not None:
+        try:
+            STATE.pipeline.stop()
+        except Exception as exc:
+            print(f"[server] stop pipeline error: {exc}")
+
+    time.sleep(0.3)  # let ALSA fully release the device
+
+    # If we were in file mode, don't restart with mic
+    if STATE.audio_source_kind == "file":
+        return
+
+    # For "none" mode, just don't start audio
+    if STATE.audio_source_kind == "none":
+        STATE.started = False
+        return
+
+    # Create a fresh MicSource and wire it into the pipeline with the new source
+    _ensure_portaudio()
+    try:
+        src = MicSource()
+        STATE.source = src
+        if STATE.pipeline is not None:
+            STATE.pipeline.set_transcription_source(source_type, src)
+        STATE.started = True
+    except Exception as exc:
+        print(f"[server] restart audio capture failed: {exc}")
+        STATE.started = False
+
+
 # ===========================================================================
 # FastAPI app -- NOTE no CORSMiddleware: it is unnecessary (frontend is served
 # from this same origin) and was observed to 403-reject the WS handshake.
@@ -219,6 +274,8 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
     # audio_source_* are server-level controls, NOT LivePipeline kwargs.
     STATE.audio_source_kind = pipeline_kwargs.pop("audio_source_kind", "mic")
     STATE.audio_file = pipeline_kwargs.pop("audio_file", None)
+    STATE.transcription_source = pipeline_kwargs.pop("transcription_source", STATE.transcription_source)
+    STATE.mode = pipeline_kwargs.pop("mode", STATE.mode)
 
     app = FastAPI(title="FaithView Pro live operator console")
     STATE.init_pipeline(**pipeline_kwargs)
@@ -276,10 +333,12 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
                 except Exception as exc:
                     print(f"[server] file audio drive error: {exc}")
             STATE.audio_thread = threading.Thread(target=_drive, daemon=True,
-                                                  name="fv-audio-file")
+                                                   name="fv-audio-file")
             STATE.audio_thread.start()
             return
-        # real mic
+        # real mic — only start if not already started via POST /transcription-source
+        if STATE.started:
+            return
         _ensure_portaudio()
         try:
             src = MicSource()
@@ -304,7 +363,13 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
         await ws.accept()
         STATE.clients.add(ws)
         # send current state immediately so a reconnecting UI is in sync
-        await ws.send_text(json.dumps({"type": "queue_update", "queue": STATE.queue}))
+        try:
+            await ws.send_text(json.dumps({"type": "queue_update", "queue": STATE.queue}))
+            await ws.send_text(json.dumps({"type": "source_update", "source": STATE.transcription_source}))
+            await ws.send_text(json.dumps({"type": "mode_update", "mode": STATE.mode}))
+        except Exception:
+            STATE.clients.discard(ws)
+            return
         try:
             while True:
                 # keep the socket open; ignore inbound for now (could accept
@@ -370,7 +435,95 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
     @app.get("/health")
     async def health():
         return {"ok": True, "audio": STATE.audio_source_kind,
-                "floor": STATE.pipeline.live_confidence_floor if STATE.pipeline else LIVE_CONFIDENCE_FLOOR}
+                "floor": STATE.pipeline.live_confidence_floor if STATE.pipeline else LIVE_CONFIDENCE_FLOOR,
+                "source": STATE.transcription_source,
+                "mode": STATE.mode}
+
+    # ---- Transcription source switching (Task 1) --------------------------
+    @app.post("/transcription-source")
+    async def set_transcription_source(req: SourceReq):
+        if req.source not in ("whisper", "deepgram"):
+            return JSONResponse({"error": "source must be 'whisper' or 'deepgram'"}, status_code=400)
+        if req.source == "deepgram" and not os.environ.get("DEEPGRAM_API_KEY"):
+            return JSONResponse({"error": "DEEPGRAM_API_KEY not set"}, status_code=400)
+        if STATE.pipeline is None:
+            return JSONResponse({"error": "pipeline not ready"}, status_code=503)
+
+        STATE.transcription_source = req.source
+        _restart_audio_capture(req.source)
+        await STATE.broadcast({"type": "source_update", "source": req.source})
+        return {"source": req.source}
+
+    # ---- Operator mode switching (Task 2) ---------------------------------
+    @app.post("/mode")
+    async def set_mode(req: ModeReq):
+        if req.mode not in ("autopilot", "semi_autopilot", "manual"):
+            return JSONResponse({"error": "mode must be 'autopilot', 'semi_autopilot', or 'manual'"}, status_code=400)
+        if STATE.pipeline is None:
+            return JSONResponse({"error": "pipeline not ready"}, status_code=503)
+
+        prev_mode = STATE.mode
+        STATE.mode = req.mode
+        STATE.pipeline.set_mode(req.mode)
+
+        if req.mode == "manual" and prev_mode != "manual":
+            # Pause transcription source
+            STATE.pipeline.pause_transcription()
+            # Clear transcript + detections panels client-side
+            await STATE.broadcast({"type": "transcript_clear"})
+            await STATE.broadcast({"type": "detections_clear"})
+            STATE.started = False
+        elif req.mode != "manual" and prev_mode == "manual":
+            # Resume transcription
+            _restart_audio_capture(STATE.transcription_source)
+
+        await STATE.broadcast({"type": "mode_update", "mode": req.mode})
+        return {"mode": req.mode}
+
+    # ---- Vector search (Task 3) -------------------------------------------
+    @app.get("/search")
+    async def vector_search(q: str = "", top_k: int = 10):
+        if not q.strip():
+            return JSONResponse({"error": "query parameter 'q' is required"}, status_code=400)
+        if STATE.pipeline is None:
+            return JSONResponse({"error": "pipeline not ready"}, status_code=503)
+
+        top_k = max(1, min(top_k, 50))
+        try:
+            STATE.pipeline._ensure_resources()
+        except Exception as exc:
+            return JSONResponse({"error": f"failed to load resources: {exc}"}, status_code=503)
+
+        if STATE.pipeline._retriever is None:
+            return JSONResponse({"error": "retriever not loaded"}, status_code=503)
+        try:
+            results = search_mod.search(
+                q.strip(), STATE.pipeline._retriever, top_k=top_k, rerank=True,
+            )
+        except Exception as exc:
+            return JSONResponse({"error": f"search failed: {exc}"}, status_code=500)
+
+        items = []
+        for r in results:
+            if hasattr(r, "candidate"):
+                c = r.candidate
+                items.append({
+                    "reference": c.reference,
+                    "translation": c.translation,
+                    "text": c.text,
+                    "score": round(r.final, 4),
+                    "semantic": round(r.semantic, 4),
+                    "lexical": round(r.lexical, 4),
+                    "context": round(r.context, 4),
+                })
+            else:
+                items.append({
+                    "reference": r.reference,
+                    "translation": r.translation,
+                    "text": r.text,
+                    "score": round(r.score, 4),
+                })
+        return {"query": q.strip(), "results": items}
 
     @app.get("/bible/{translation}/{book}/{chapter}")
     async def bible_chapter(translation: str, book: str, chapter: int):
@@ -450,6 +603,10 @@ def main():
                          "hallucinations across rolling chunks)")
     ap.add_argument("--no-preprocess", action="store_true",
                     help="disable mic high-pass cleanup (a/b vs file path)")
+    ap.add_argument("--source", default="whisper", choices=["whisper", "deepgram"],
+                    help="transcription source (default 'whisper')")
+    ap.add_argument("--mode", default="semi_autopilot", choices=["autopilot", "semi_autopilot", "manual"],
+                    help="operator mode (default 'semi_autopilot')")
     args = ap.parse_args()
 
     pipeline_kwargs = dict(
@@ -467,6 +624,8 @@ def main():
         whisper_initial_prompt=args.initial_prompt,
         condition_on_previous_text=bool(args.condition_previous_text),
         preprocess=not args.no_preprocess,
+        transcription_source=args.source,
+        mode=args.mode,
     )
     app = create_app(**pipeline_kwargs)
 

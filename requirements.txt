@@ -35,3 +35,7 @@ sounddevice>=0.5.0
 fastapi>=0.115.0
 uvicorn>=0.32.0
 websockets>=13.0   # used by the WS /ws endpoint and the test clients
+# NOTE: websockets>=14 renamed extra_headers -> additional_headers
+
+# Optional: load .env files for API keys (Deepgram, etc.)
+python-dotenv>=1.0.0

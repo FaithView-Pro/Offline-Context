@@ -482,6 +482,7 @@ class LiveTranscriber:
         language: Optional[str] = config.WHISPER_LANGUAGE,
         beam_size: int = config.WHISPER_BEAM_SIZE,
         vad_filter: bool = True,
+        vad_min_silence_ms: int = config.WHISPER_VAD_MIN_SILENCE_MS,
         offline: bool = config.OFFLINE,
         word_timestamps: bool = False,
         max_queue: int = 50,
@@ -497,6 +498,7 @@ class LiveTranscriber:
         self.language = language
         self.beam_size = beam_size
         self.vad_filter = vad_filter
+        self.vad_min_silence_ms = vad_min_silence_ms
         self.word_timestamps = word_timestamps
         self.offline = offline
         self.model_name = model_name
@@ -626,6 +628,7 @@ class LiveTranscriber:
                 beam_size=self.beam_size,
                 language=self.language,
                 vad_filter=self.vad_filter,
+                vad_parameters={"min_silence_duration_ms": self.vad_min_silence_ms},
                 word_timestamps=self.word_timestamps,
                 initial_prompt=self.initial_prompt,
                 condition_on_previous_text=self.condition_on_previous_text,
@@ -725,7 +728,9 @@ class LiveTranscriber:
         try:
             segs, _info = self._model.transcribe(
                 audio, beam_size=self.beam_size, language=self.language,
-                vad_filter=self.vad_filter, word_timestamps=self.word_timestamps,
+                vad_filter=self.vad_filter,
+                vad_parameters={"min_silence_duration_ms": self.vad_min_silence_ms},
+                word_timestamps=self.word_timestamps,
                 initial_prompt=self.initial_prompt,
                 condition_on_previous_text=self.condition_on_previous_text,
             )
@@ -839,6 +844,102 @@ def _cli():
         rt = (lt.total_proc_sec / lt.total_audio_sec) if lt.total_audio_sec else 0.0
         print(f"[live_transcribe] chunks={lt.chunk_count} audio={lt.total_audio_sec:.1f}s "
               f"proc={lt.total_proc_sec:.2f}s ratio={rt:.2f}x realtime")
+
+
+# ===========================================================================
+# WhisperTranscriptionSource -- adapter so Whisper satisfies TranscriptionSource
+# ===========================================================================
+class WhisperTranscriptionSource:
+    """Wraps LiveTranscriber into the TranscriptionSource interface.
+
+    Loads the Whisper model once and reuses it across stop/start cycles so
+    hot-swapping to Deepgram and back does not reload the model.
+    """
+
+    def __init__(
+        self,
+        model_name: str = config.WHISPER_MODEL,
+        chunk_seconds: float = 8.0,
+        overlap_seconds: float = 2.0,
+        language: Optional[str] = config.WHISPER_LANGUAGE,
+        beam_size: int = config.WHISPER_BEAM_SIZE,
+        vad_filter: bool = True,
+        vad_min_silence_ms: int = config.WHISPER_VAD_MIN_SILENCE_MS,
+        offline: bool = config.OFFLINE,
+        word_timestamps: bool = False,
+        initial_prompt: Optional[str] = None,
+        condition_on_previous_text: bool = False,
+        preprocess: bool = True,
+        min_avg_logprob: float = config.WHISPER_MIN_AVG_LOGPROB,
+        max_no_speech_prob: float = config.WHISPER_MAX_NO_SPEECH_PROB,
+    ):
+        self.model_name = model_name
+        self.chunk_seconds = chunk_seconds
+        self.overlap_seconds = overlap_seconds
+        self.language = language
+        self.beam_size = beam_size
+        self.vad_filter = vad_filter
+        self.vad_min_silence_ms = vad_min_silence_ms
+        self.offline = offline
+        self.word_timestamps = word_timestamps
+        self.initial_prompt = initial_prompt
+        self.condition_on_previous_text = condition_on_previous_text
+        self.preprocess = preprocess
+        self.min_avg_logprob = min_avg_logprob
+        self.max_no_speech_prob = max_no_speech_prob
+        self._transcriber: Optional[LiveTranscriber] = None
+        self._on_segment: Optional[Callable[[Segment], None]] = None
+
+    @property
+    def name(self) -> str:
+        return "whisper"
+
+    def start(self, audio_source, on_segment: Callable[[Segment], None],
+              on_interim: Optional[Callable[[Segment], None]] = None) -> None:
+        self._on_segment = on_segment
+        if self._transcriber is None:
+            self._transcriber = LiveTranscriber(
+                on_segment=on_segment,
+                model_name=self.model_name,
+                chunk_seconds=self.chunk_seconds,
+                overlap_seconds=self.overlap_seconds,
+                language=self.language,
+                beam_size=self.beam_size,
+                vad_filter=self.vad_filter,
+                vad_min_silence_ms=self.vad_min_silence_ms,
+                offline=self.offline,
+                word_timestamps=self.word_timestamps,
+                initial_prompt=self.initial_prompt,
+                condition_on_previous_text=self.condition_on_previous_text,
+                preprocess=self.preprocess,
+                min_avg_logprob=self.min_avg_logprob,
+                max_no_speech_prob=self.max_no_speech_prob,
+            )
+        else:
+            self._transcriber.on_segment = on_segment
+            self._transcriber._prev_text = ""
+            self._transcriber._prev_chunk_audio = None
+        self._transcriber.start(audio_source)
+
+    def stop(self) -> None:
+        if self._transcriber is not None:
+            try:
+                self._transcriber.stop()
+            except Exception as exc:
+                print(f"[whisper_source] stop error: {exc}")
+
+    # ---- passthrough for diagnostics ----
+    @property
+    def chunk_count(self) -> int:
+        return self._transcriber.chunk_count if self._transcriber else 0
+
+    @property
+    def total_proc_sec(self) -> float:
+        return self._transcriber.total_proc_sec if self._transcriber else 0.0
+
+    @property
+    def total_audio_sec(self) -> float:
+        return self._transcriber.total_audio_sec if self._transcriber else 0.0
 
 
 if __name__ == "__main__":
