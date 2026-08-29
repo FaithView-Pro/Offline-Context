@@ -13,8 +13,10 @@
     --text-primary: #f2f2f3;
     --text-secondary: #9b9ba3;
     --text-muted: #5c5c64;
-    --accent-orange: #ef5a28;
-    --accent-orange-dim: #7a3018;
+    --accent: #35d07f;
+    --accent-hover: #2bb86a;
+    --accent-orange: #35d07f;
+    --accent-orange-dim: #1a4a30;
     --accent-green: #35d07f;
     --accent-yellow: #e2a83d;
     --accent-red-bg: #5a1310;
@@ -23,6 +25,26 @@
     --radius-s: 4px;
     --radius-m: 8px;
     --radius-l: 10px;
+  }
+
+  body.light-mode{
+    --bg-app: #f5f5f7;
+    --bg-panel: #ffffff;
+    --bg-panel-alt: #eaeaef;
+    --border: #d4d4d8;
+    --border-soft: #e4e4e7;
+    --text-primary: #18181b;
+    --text-secondary: #52525b;
+    --text-muted: #a1a1aa;
+    --accent: #16a34a;
+    --accent-hover: #15803d;
+    --accent-orange: #16a34a;
+    --accent-orange-dim: #dcfce7;
+    --accent-green: #16a34a;
+    --accent-yellow: #ca8a04;
+    --accent-red-bg: #fef2f2;
+    --accent-red-line: #dc2626;
+    --pill-ai: #e4e4e7;
   }
 
   *{ box-sizing: border-box; margin:0; padding:0; }
@@ -34,6 +56,7 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
     font-size: 13px;
     -webkit-font-smoothing: antialiased;
+    transition: background .25s, color .25s;
   }
 
   .app{
@@ -55,19 +78,18 @@
     border-bottom: 1px solid var(--border);
     background: var(--bg-app);
     flex-shrink:0;
+    transition: background .25s, border-color .25s;
   }
   .topnav-left{ display:flex; align-items:center; gap:6px; }
-  .nav-tab{
-    padding: 8px 16px;
+  .brand-badge{
+    padding: 7px 16px;
     border-radius: 999px;
-    font-weight:600; font-size:13px;
-    color: var(--text-secondary);
-    cursor:pointer;
-    background:transparent; border:none;
-  }
-  .nav-tab.active{
-    background: var(--accent-orange);
-    color:#fff;
+    font-weight:700; font-size:13px;
+    color: var(--text-primary);
+    background: var(--bg-panel-alt);
+    border: 1px solid var(--border);
+    cursor: default;
+    transition: background .25s, color .25s, border-color .25s;
   }
   .topnav-right{ display:flex; align-items:center; gap:8px; }
   .source-toggle, .mode-toggle{
@@ -75,28 +97,30 @@
     border-radius:999px; overflow:hidden;
     border:1px solid var(--border);
     background: var(--bg-panel-alt);
+    transition: background .25s, border-color .25s;
   }
   .source-toggle button, .mode-toggle button{
     padding:6px 12px; font-size:11px; font-weight:700;
     border:none; cursor:pointer; color:var(--text-muted);
     background:transparent;
+    transition: background .15s, color .15s;
   }
   .source-toggle button.active, .mode-toggle button.active{
-    background: var(--accent-orange); color:#fff;
+    background: var(--accent); color:#fff;
   }
-  .status-pill{
-    display:flex; align-items:center; gap:6px;
-    padding:7px 14px; border-radius:999px;
-    background: var(--bg-panel-alt);
-    border:1px solid var(--border);
-    font-weight:600; font-size:12px;
-    color: var(--text-primary);
+  .action-btn{
+    padding:7px 18px; border-radius:999px;
+    font-size:12px; font-weight:700; cursor:pointer;
+    border:none;
+    transition: opacity .15s;
   }
-  .status-pill .dot{
-    width:7px; height:7px; border-radius:50%;
-    background: var(--accent-red-line);
+  .action-btn:hover{ opacity:.85; }
+  .action-btn.present-btn{
+    background: var(--accent); color:#fff;
   }
-  .status-pill.live .dot{ background: var(--accent-green); }
+  .action-btn.clear-btn{
+    background: var(--accent); color:#fff;
+  }
   .icon-btn{
     display:flex; flex-direction:column; align-items:center; gap:3px;
     padding:6px 10px; border-radius: var(--radius-s);
@@ -105,6 +129,17 @@
   }
   .icon-btn svg{ width:17px; height:17px; }
   .icon-btn:hover{ color: var(--text-primary); }
+
+  .theme-toggle{
+    display:flex; align-items:center; gap:6px;
+    padding:5px 10px; border-radius:999px;
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    cursor:pointer; font-size:11px; font-weight:600;
+    color: var(--text-secondary);
+    transition: background .25s, border-color .25s;
+  }
+  .theme-toggle svg{ width:14px; height:14px; }
 
   /* ---------- Main grid ---------- */
   .main{
@@ -115,11 +150,13 @@
     background: var(--border);
     overflow:hidden;
     min-height:0;
+    transition: background .25s;
   }
   .panel{
     background: var(--bg-app);
     display:flex; flex-direction:column;
     min-height:0; overflow:hidden;
+    transition: background .25s;
   }
   .panel-head{
     display:flex; align-items:center; justify-content:space-between;
@@ -155,6 +192,7 @@
   .transcribe-status{
     display:flex; align-items:center; gap:8px;
     color: var(--accent-green); font-weight:600; font-size:13px;
+    cursor:pointer;
   }
   .mic-dot{ width:9px; height:9px; border-radius:2px; background: var(--accent-green); }
   .rec-square{
@@ -192,8 +230,10 @@
     border:1px solid var(--border);
     background: var(--bg-panel-alt);
     color: var(--text-primary);
+    transition: background .15s;
   }
   .btn:hover{ background:#1e1e23; }
+  body.light-mode .btn:hover{ background:#d4d4d8; }
   .btn.primary{
     background:transparent;
     color: var(--text-primary);
@@ -224,33 +264,21 @@
     overflow:hidden;
     aspect-ratio: 16/9;
     position:relative;
-    background: radial-gradient(circle at 50% 30%, #ff5a2b 0%, #7a1a10 55%, #1a0704 100%);
+    background: radial-gradient(circle at 50% 30%, #4a9eff 0%, #1a3a6a 55%, #0a0f1a 100%);
   }
-  .output-frame svg.silhouette{
-    position:absolute; bottom:0; left:50%; transform:translateX(-50%);
-    height:78%;
+  .output-frame .verse-overlay{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:20px; text-align:center;
   }
-  .lexicon-btn{
-    position:absolute; left:14px; bottom:14px;
-    display:flex; align-items:center; gap:7px;
-    background: rgba(15,15,17,0.85);
-    border:1px solid rgba(255,255,255,0.12);
-    color:#fff; font-size:12px; font-weight:600;
-    padding:7px 13px; border-radius:999px;
+  .output-frame .verse-overlay .vtext{
+    color:#fff; font-size:14px; font-weight:700; line-height:1.5;
+    text-shadow: 0 1px 6px rgba(0,0,0,.5);
   }
-  .output-nav{
-    display:flex; align-items:center; justify-content:flex-end; gap:8px;
-    margin: 0 16px 20px;
+  .output-frame .verse-overlay .vref{
+    color:rgba(255,255,255,.7); font-size:10px; margin-top:8px; font-weight:600;
+    letter-spacing:.04em;
   }
-  .round-btn{
-    width:30px; height:30px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    background: var(--bg-panel-alt);
-    border:1px solid var(--border);
-    color: var(--text-secondary); cursor:pointer;
-  }
-  .round-btn:hover{ color: var(--text-primary); }
-
   .queue-item{
     border-top: 1px solid var(--border-soft);
     padding: 12px 0;
@@ -270,6 +298,15 @@
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
   }
   .queue-actions{ display:flex; gap:6px; flex-shrink:0; }
+  .round-btn{
+    width:30px; height:30px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    color: var(--text-secondary); cursor:pointer;
+    transition: background .15s;
+  }
+  .round-btn:hover{ color: var(--text-primary); }
   .queue-actions .round-btn{ width:26px; height:26px; }
 
   /* ---------- Bottom bar ---------- */
@@ -277,15 +314,17 @@
     height:44%;
     min-height:280px;
     display:grid;
-    grid-template-columns: 1.4fr 0.45fr 1fr 0.9fr;
+    grid-template-columns: 1.6fr 1fr 1fr;
     gap:1px;
     background: var(--border);
     border-top:1px solid var(--border);
     flex-shrink:0;
+    transition: background .25s;
   }
   .bible-panel{
     background: var(--bg-app);
     display:flex; flex-direction:column; min-height:0;
+    transition: background .25s;
   }
   .bible-toolbar{
     display:flex; align-items:center; gap:10px;
@@ -298,6 +337,7 @@
     border-radius: var(--radius-s);
     padding:6px 10px; font-size:12px; font-weight:700;
     cursor:pointer;
+    transition: background .25s;
   }
   .square-btn{
     width:28px; height:28px; border-radius: var(--radius-s);
@@ -305,15 +345,50 @@
     border:1px solid var(--border);
     display:flex; align-items:center; justify-content:center;
     color: var(--text-secondary); cursor:pointer;
+    transition: background .15s;
   }
-  .square-btn:hover{ color: var(--text-primary); }
-  .ref-input{
+  .square-btn:hover{ color: var(--text-primary); background: var(--border); }
+  .ref-wrap{
     flex:1;
+    position:relative;
+  }
+  .ref-input{
+    width:100%;
     background: var(--bg-panel-alt);
     border:1px solid var(--border);
     border-radius: var(--radius-s);
     padding:7px 12px; font-size:13px; font-weight:600;
     color: var(--text-primary);
+    transition: background .25s;
+  }
+  .ref-dropdown{
+    display:none;
+    position:absolute; left:0; right:0; top:100%;
+    margin-top:2px;
+    max-height:220px; overflow-y:auto;
+    background: var(--bg-panel-alt);
+    border:1px solid var(--border);
+    border-radius: var(--radius-s);
+    z-index:100;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  }
+  .ref-dropdown.open{ display:block; }
+  .ref-dd-item{
+    padding:7px 12px; font-size:12px; cursor:pointer;
+    color: var(--text-primary);
+    display:flex; justify-content:space-between; align-items:center;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .ref-dd-item:last-child{ border-bottom:none; }
+  .ref-dd-item:hover, .ref-dd-item.active{
+    background: var(--accent-green);
+    color:#fff;
+  }
+  .ref-dd-item .dd-alias{
+    font-size:10px; color: var(--text-muted); font-weight:400;
+  }
+  .ref-dd-item:hover .dd-alias, .ref-dd-item.active .dd-alias{
+    color:rgba(255,255,255,.7);
   }
   .bible-verses{
     flex:1; overflow-y:auto;
@@ -324,25 +399,34 @@
     padding: 9px 0;
     border-bottom:1px solid var(--border-soft);
     align-items:flex-start;
+    cursor:pointer;
+    transition: background .1s;
   }
+  .verse-row:hover{ background: rgba(53,208,127,.06); }
+  body.light-mode .verse-row:hover{ background: rgba(22,163,74,.08); }
   .verse-num{
     width:20px; flex-shrink:0;
     color: var(--accent-red-line); font-weight:700; font-size:13px;
   }
   .verse-text{ line-height:1.5; color: var(--text-secondary); font-size:13px; }
   .verse-row.active{
-    background: rgba(194,58,31,0.12);
-    border: 1px solid var(--accent-red-line);
+    background: rgba(53,208,127,0.12);
+    border: 1px solid var(--accent-green);
     border-radius: var(--radius-s);
     margin: 2px 0;
     padding: 9px 10px;
   }
+  body.light-mode .verse-row.active{
+    background: rgba(22,163,74,0.10);
+    border-color: var(--accent-green);
+  }
   .verse-row.active .verse-text{ color: var(--text-primary); font-weight:600; }
 
-  /* Manual search panel (bottom bar) */
+  /* Search Engine panel (bottom bar) */
   .manual-search-panel{
     background: var(--bg-app);
     display:flex; flex-direction:column; min-height:0;
+    transition: background .25s;
   }
   .manual-search-toolbar{
     display:flex; align-items:center; gap:6px;
@@ -355,11 +439,12 @@
     border-radius: var(--radius-s);
     padding:6px 10px; font-size:12px;
     color: var(--text-primary);
+    transition: background .25s;
   }
   .manual-search-input::placeholder{ color: var(--text-muted); }
   .manual-search-btn{
     padding:6px 12px; border-radius: var(--radius-s);
-    background: var(--accent-orange); color:#fff;
+    background: var(--accent-green); color:#fff;
     border:none; font-size:11px; font-weight:600; cursor:pointer;
   }
   .manual-search-results{
@@ -377,7 +462,7 @@
   .msr-card .detect-actions{ margin-top:4px; }
   .msr-card .btn{ padding:5px 10px; font-size:11px; }
 
-  /* Search panel */
+  /* Search panel (detections inline) */
   .search-bar{
     display:flex; align-items:center; gap:6px;
     padding: 0 16px 10px; flex-shrink:0;
@@ -393,43 +478,49 @@
   .search-input::placeholder{ color: var(--text-muted); }
   .search-btn{
     padding:7px 14px; border-radius: var(--radius-s);
-    background: var(--accent-orange); color:#fff;
+    background: var(--accent-green); color:#fff;
     border:none; font-size:12px; font-weight:600; cursor:pointer;
   }
-  .search-result{
-    border-top: 1px solid var(--border-soft);
-    padding: 10px 0;
-  }
-  .search-result:first-child{ border-top:none; }
-  .search-result-ref{ font-size:13px; font-weight:700; }
-  .search-result-score{ font-size:11px; color: var(--text-muted); }
-  .search-result-text{ font-size:12px; color: var(--text-secondary); line-height:1.4; margin:4px 0 8px; }
-  .search-result .detect-actions{ margin-top:6px; }
 
   .preview-panel{
     background: var(--bg-app);
     display:flex; flex-direction:column; min-height:0;
+    transition: background .25s;
   }
   .preview-frame{
     margin: 0 16px 16px;
     border-radius: var(--radius-m);
     aspect-ratio: 16/9;
     position:relative; overflow:hidden;
-    background: radial-gradient(circle at 50% 25%, #ff5a2b 0%, #7a1a10 55%, #1a0704 100%);
+    background: radial-gradient(circle at 50% 30%, #4a9eff 0%, #1a3a6a 55%, #0a0f1a 100%);
     display:flex; align-items:flex-end; justify-content:center;
-  }
-  .preview-frame .cursor{
-    position:absolute; left:38%; top:52%; font-size:20px;
   }
   .preview-caption{
     position:absolute; bottom:16px; left:16px; right:16px; text-align:center;
   }
   .preview-caption .txt{ color:#fff; font-size:12.5px; font-weight:600; line-height:1.4; }
-  .preview-caption .cite{ color:#f3b8a8; font-size:10px; margin-top:6px; font-weight:600; }
+  .preview-caption .cite{ color:rgba(255,255,255,.7); font-size:10px; margin-top:6px; font-weight:600; }
+  .present-btn-bottom{
+    margin: 0 16px 14px;
+    padding:10px 0;
+    border-radius: var(--radius-s);
+    background: var(--accent-green);
+    color:#fff; font-size:13px; font-weight:700;
+    border:none; cursor:pointer; text-align:center;
+    transition: opacity .15s;
+  }
+  .present-btn-bottom:hover{ opacity:.85; }
+
+  .fullscreen-btn{
+    background:none; border:none; cursor:pointer; color:var(--text-secondary);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .fullscreen-btn:hover{ color:var(--text-primary); }
 
   ::-webkit-scrollbar{ width:8px; }
   ::-webkit-scrollbar-thumb{ background:#2a2a2f; border-radius:8px; }
   ::-webkit-scrollbar-track{ background:transparent; }
+  body.light-mode ::-webkit-scrollbar-thumb{ background:#c4c4c9; }
 </style>
 </head>
 <body>
@@ -438,9 +529,7 @@
   <!-- TOP NAV -->
   <div class="topnav">
     <div class="topnav-left">
-      <button class="nav-tab active">Scriptures</button>
-      <button class="nav-tab">Slides</button>
-      <button class="nav-tab">Songs</button>
+      <div class="brand-badge">FaithView Pro</div>
     </div>
     <div class="topnav-right">
       <div class="mode-toggle" id="mode-toggle">
@@ -449,31 +538,26 @@
         <button data-mode="manual">Man</button>
       </div>
       <div class="source-toggle" id="source-toggle">
-        <button data-source="whisper" class="active">Whisper</button>
-        <button data-source="deepgram">DG</button>
+        <button data-source="offline">Offline</button>
+        <button data-source="whisper" class="active">Online (Best)</button>
       </div>
-      <div class="status-pill" id="status-pill"><span class="dot"></span>LIVE</div>
-      <div class="status-pill">BLACK</div>
-      <div class="icon-btn">
+      <button class="action-btn present-btn" id="top-present-btn">Present</button>
+      <button class="action-btn clear-btn" id="top-clear-btn">Clear</button>
+      <div class="icon-btn" id="nav-outputs" title="Outputs">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
         Outputs
       </div>
-      <div class="icon-btn">
+      <div class="icon-btn" id="nav-themes" title="Themes">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18"/></svg>
         Themes
       </div>
-      <div class="icon-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 4v16M4 9h16"/></svg>
-        Studio
-      </div>
-      <div class="icon-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
-        Alerts
-      </div>
-      <div class="icon-btn">
+      <div class="icon-btn" id="nav-settings" title="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 01-4 0v-.09A1.7 1.7 0 009 19.4a1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.7 1.7 0 004.6 15a1.7 1.7 0 00-1.55-1H3a2 2 0 010-4h.09A1.7 1.7 0 004.6 9a1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06A1.7 1.7 0 009 4.6a1.7 1.7 0 001-1.55V3a2 2 0 014 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06A1.7 1.7 0 0019.4 9c.2.62.75 1.06 1.55 1H21a2 2 0 010 4h-.09a1.7 1.7 0 00-1.51 1z"/></svg>
         Settings
       </div>
+      <button class="theme-toggle" id="theme-toggle" title="Toggle light/dark mode">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
     </div>
   </div>
 
@@ -484,7 +568,6 @@
     <div class="panel" id="transcript-panel">
       <div class="panel-head">
         <span class="panel-title">Live transcript</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-secondary)"><path d="M9 3H5a2 2 0 00-2 2v4M15 3h4a2 2 0 012 2v4M9 21H5a2 2 0 01-2-2v-4M15 21h4a2 2 0 002-2v-4"/></svg>
       </div>
       <div class="panel-body" id="transcript-body">
         <div class="empty">waiting for speech…</div>
@@ -503,11 +586,6 @@
         <span class="panel-title">Recent detections</span>
         <button class="panel-action" id="clear-detections">✕ Clear all</button>
       </div>
-      <div class="search-bar" style="padding:6px 16px 8px; border-bottom:1px solid var(--border-soft);">
-        <input class="search-input" id="search-input" placeholder="Search verses…" autocomplete="off">
-        <button class="search-btn" id="search-btn">Find</button>
-      </div>
-      <div class="panel-body" id="search-results" style="display:none;"></div>
       <div class="panel-body" id="detections-body">
         <div class="empty">no detections yet</div>
       </div>
@@ -517,6 +595,7 @@
     <div class="panel" id="display-panel">
       <div class="panel-head">
         <span class="panel-title">Live display</span>
+        <button class="panel-action" id="goto-output" title="Go to output">/ Output</button>
       </div>
       <div class="live-slide hidden" id="live-slide">
         <div class="live-slide-ref" id="live-slide-ref"></div>
@@ -527,25 +606,16 @@
       </div>
     </div>
 
-    <!-- Column 4: Main output + Queue -->
+    <!-- Column 4: Live output + Queue -->
     <div class="panel">
       <div class="panel-head">
-        <span class="panel-title">Main output <span style="color:var(--text-muted)">▾</span></span>
-        <span class="panel-action" style="letter-spacing:.05em;">EDEN</span>
+        <span class="panel-title">Live output <span style="color:var(--text-muted)">▾</span></span>
       </div>
-      <div class="output-frame">
-        <svg class="silhouette" viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
-          <ellipse cx="100" cy="60" rx="26" ry="30" fill="#1a0603" opacity="0.85"/>
-          <path d="M60 260 C55 170 65 110 100 100 C135 110 145 170 140 260 Z" fill="#1a0603" opacity="0.85"/>
-        </svg>
-        <div class="lexicon-btn">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
-          Lexicon
+      <div class="output-frame" id="output-frame">
+        <div class="verse-overlay" id="output-overlay" style="display:none;">
+          <div class="vtext" id="output-vtext"></div>
+          <div class="vref" id="output-vref"></div>
         </div>
-      </div>
-      <div class="output-nav" style="margin-top:0;">
-        <div class="round-btn">‹</div>
-        <div class="round-btn">›</div>
       </div>
 
       <div class="panel-head" style="padding-top:0;">
@@ -576,34 +646,27 @@
         </select>
         <div class="square-btn" id="btn-prev-chapter" title="Previous chapter">‹</div>
         <div class="square-btn" id="btn-next-chapter" title="Next chapter">›</div>
-        <div class="ref-input" id="bible-ref-input" placeholder="Gen 1:2 or Romans 8" autocomplete="off" list="bible-book-list"></div>
-        <datalist id="bible-book-list"></datalist>
         <div class="square-btn" id="btn-prev-verse" title="Previous verse">◂</div>
+        <div class="ref-wrap">
+          <input class="ref-input" id="bible-ref-input" placeholder="Gen 1:1 or Romans 8" autocomplete="off">
+          <div class="ref-dropdown" id="ref-dropdown"></div>
+        </div>
         <div class="square-btn" id="btn-next-verse" title="Next verse">▸</div>
       </div>
       <div class="bible-verses" id="bible-verses">
         <div class="empty">select a chapter</div>
       </div>
-    </div>
-
-    <!-- Bible Reference Lookup -->
-    <div class="bible-panel" id="ref-lookup-panel">
-      <div class="panel-head">
-        <span class="panel-title" style="font-size:13px;">Lookup</span>
-      </div>
-      <div class="bible-toolbar" style="padding:8px 12px;">
-        <input class="ref-input" id="bible-ref-input2" placeholder="Gen 1:2 or Romans 8" autocomplete="off" list="bible-book-list2" style="width:100%;">
-        <datalist id="bible-book-list2"></datalist>
-      </div>
-      <div class="bible-verses" id="ref-lookup-verses" style="padding:0 12px 10px;">
-        <div class="empty">enter a reference</div>
+      <div class="transcribe-row" style="border-top:1px solid var(--border-soft);">
+        <div class="transcribe-status" id="transcribe-status-bottom">
+          <span class="mic-dot" id="mic-dot-bottom"></span> Start transcribing
+        </div>
       </div>
     </div>
 
-    <!-- Manual Search -->
+    <!-- Search Engine -->
     <div class="manual-search-panel">
       <div class="panel-head">
-        <span class="panel-title" style="font-size:13px;">Manual Search</span>
+        <span class="panel-title" style="font-size:13px;">Search Engine</span>
       </div>
       <div class="manual-search-toolbar">
         <input class="manual-search-input" id="ms-input" placeholder="Type a phrase…" autocomplete="off">
@@ -618,15 +681,17 @@
     <div class="preview-panel">
       <div class="panel-head">
         <span class="panel-title">Preview</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-secondary)"><path d="M9 3H5a2 2 0 00-2 2v4M15 3h4a2 2 0 012 2v4M9 21H5a2 2 0 01-2-2v-4M15 21h4a2 2 0 002-2v-4"/></svg>
+        <button class="fullscreen-btn" id="preview-fullscreen" title="Fullscreen">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 00-2 2v4M15 3h4a2 2 0 012 2v4M9 21H5a2 2 0 01-2-2v-4M15 21h4a2 2 0 002-2v-4"/></svg>
+        </button>
       </div>
-      <div class="preview-frame">
-        <span class="cursor" style="font-size:30px;">👆</span>
+      <div class="preview-frame" id="preview-frame">
         <div class="preview-caption">
           <div class="txt" id="preview-txt">hover or select a verse to preview</div>
           <div class="cite" id="preview-cite"></div>
         </div>
       </div>
+      <button class="present-btn-bottom" id="preview-present-btn">Present</button>
     </div>
 
   </div>
@@ -640,7 +705,8 @@ const API = location.origin;
 
 let ws = null;
 let queue = [];
-let session = {};  // {translation, book, chapter, verse}
+let session = {};
+let previewData = null;
 
 function $(sel){ return document.querySelector(sel); }
 function $$(sel){ return document.querySelectorAll(sel); }
@@ -650,7 +716,6 @@ function toast(msg){
   setTimeout(() => t.classList.remove("show"), 1600);
 }
 
-// ---- POST / DEL helpers ----
 async function post(path, body){
   try {
     const r = await fetch(API + path, {
@@ -671,17 +736,293 @@ function escapeHtml(s){ return (s==null?"":String(s))
   .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
   .replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 
+// ---- Book name abbreviation map ----
+const BOOK_ALIASES = {
+  "gen":"Genesis","ge":"Genesis","gn":"Genesis",
+  "exod":"Exodus","ex":"Exodus","exo":"Exodus",
+  "lev":"Leviticus","lv":"Leviticus",
+  "num":"Numbers","nu":"Numbers","nm":"Numbers",
+  "deut":"Deuteronomy","dt":"Deuteronomy","de":"Deuteronomy",
+  "josh":"Joshua","jos":"Joshua",
+  "judg":"Judges","jgs":"Judges",
+  "ruth":"Ruth","ru":"Ruth",
+  "1 sam":"1 Samuel","1 sa":"1 Samuel","1s":"1 Samuel",
+  "2 sam":"2 Samuel","2 sa":"2 Samuel","2s":"2 Samuel",
+  "1 kings":"1 Kings","1 kgs":"1 Kings","1ki":"1 Kings",
+  "2 kings":"2 Kings","2 kgs":"2 Kings","2ki":"2 Kings",
+  "1 chron":"1 Chronicles","1 ch":"1 Chronicles","1ch":"1 Chronicles",
+  "2 chron":"2 Chronicles","2 ch":"2 Chronicles","2ch":"2 Chronicles",
+  "ezra":"Ezra","ez":"Ezra",
+  "neh":"Nehemiah","ne":"Nehemiah",
+  "esth":"Esther","est":"Esther",
+  "job":"Job","jb":"Job",
+  "ps":"Psalms","psa":"Psalms","psalm":"Psalms","psalms":"Psalms",
+  "prov":"Proverbs","pr":"Proverbs","pro":"Proverbs",
+  "eccl":"Ecclesiastes","ecc":"Ecclesiastes","qoh":"Ecclesiastes",
+  "song":"Song of Solomon","sos":"Song of Solomon","ss":"Song of Solomon",
+  "isa":"Isaiah","is":"Isaiah",
+  "jer":"Jeremiah","je":"Jeremiah",
+  "lam":"Lamentations","la":"Lamentations",
+  "ezek":"Ezekiel","eze":"Ezekiel","ezk":"Ezekiel",
+  "dan":"Daniel","da":"Daniel",
+  "hos":"Hosea","ho":"Hosea",
+  "joel":"Joel","jl":"Joel",
+  "amos":"Amos","am":"Amos",
+  "obad":"Obadiah","ob":"Obadiah",
+  "jonah":"Jonah","jon":"Jonah",
+  "mic":"Micah","mi":"Micah",
+  "nah":"Nahum","na":"Nahum",
+  "hab":"Habakkuk","hb":"Habakkuk",
+  "zeph":"Zephaniah","zep":"Zephaniah",
+  "hag":"Haggai","hg":"Haggai",
+  "zech":"Zechariah","zar":"Zechariah","zec":"Zechariah",
+  "mal":"Malachi","ml":"Malachi",
+  "matt":"Matthew","mt":"Matthew","mat":"Matthew",
+  "mark":"Mark","mk":"Mark","mr":"Mark",
+  "luke":"Luke","lk":"Luke","lu":"Luke",
+  "john":"John","jn":"John","joh":"John",
+  "acts":"Acts","ac":"Acts",
+  "rom":"Romans","ro":"Romans","rm":"Romans",
+  "1 cor":"1 Corinthians","1 co":"1 Corinthians","1co":"1 Corinthians",
+  "2 cor":"2 Corinthians","2 co":"2 Corinthians","2co":"2 Corinthians",
+  "gal":"Galatians","ga":"Galatians",
+  "eph":"Ephesians","ep":"Ephesians",
+  "phil":"Philippians","php":"Philippians","pp":"Philippians",
+  "col":"Colossians","co":"Colossians",
+  "1 thess":"1 Thessalonians","1 th":"1 Thessalonians","1th":"1 Thessalonians",
+  "2 thess":"2 Thessalonians","2 th":"2 Thessalonians","2th":"2 Thessalonians",
+  "1 tim":"1 Timothy","1 ti":"1 Timothy","1ti":"1 Timothy",
+  "2 tim":"2 Timothy","2 ti":"2 Timothy","2ti":"2 Timothy",
+  "titus":"Titus","ti":"Titus","tit":"Titus",
+  "phlm":"Philemon","pm":"Philemon",
+  "heb":"Hebrews","hebr":"Hebrews",
+  "jas":"James","jm":"James",
+  "1 pet":"1 Peter","1 pe":"1 Peter","1pe":"1 Peter",
+  "2 pet":"2 Peter","2 pe":"2 Peter","2pe":"2 Peter",
+  "1 jn":"1 John","1 joh":"1 John","1jn":"1 John",
+  "2 jn":"2 John","2 joh":"2 John","2jn":"2 John",
+  "3 jn":"3 John","3 joh":"3 John","3jn":"3 John",
+  "jude":"Jude","jd":"Jude",
+  "rev":"Revelation","re":"Revelation","ap":"Revelation",
+};
+
+const BIBLE_BOOKS = [
+  "Genesis","Exodus","Leviticus","Numbers","Deuteronomy",
+  "Joshua","Judges","Ruth","1 Samuel","2 Samuel","1 Kings","2 Kings",
+  "1 Chronicles","2 Chronicles","Ezra","Nehemiah","Esther","Job",
+  "Psalms","Proverbs","Ecclesiastes","Song of Solomon","Isaiah",
+  "Jeremiah","Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos",
+  "Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah","Haggai",
+  "Zechariah","Malachi","Matthew","Mark","Luke","John","Acts",
+  "Romans","1 Corinthians","2 Corinthians","Galatians","Ephesians",
+  "Philippians","Colossians","1 Thessalonians","2 Thessalonians",
+  "1 Timothy","2 Timothy","Titus","Philemon","Hebrews","James",
+  "1 Peter","2 Peter","1 John","2 John","3 John","Jude","Revelation"
+];
+
+function resolveBook(input){
+  const trimmed = input.trim();
+  const lower = trimmed.toLowerCase();
+  if (BOOK_ALIASES[lower]) return BOOK_ALIASES[lower];
+  for (const book of BIBLE_BOOKS){
+    if (book.toLowerCase() === lower) return book;
+    if (book.toLowerCase().startsWith(lower) && lower.length >= 3) return book;
+  }
+  return trimmed;
+}
+
+function parseBibleRef(raw){
+  if (!raw) return null;
+  let m = raw.match(/^(.+?)\s+(\d+):(\d+)$/);
+  if (m) return { book: resolveBook(m[1]), chapter: parseInt(m[2]), verse: parseInt(m[3]) };
+  m = raw.match(/^(.+?)\s+(\d+)$/);
+  if (m) return { book: resolveBook(m[1]), chapter: parseInt(m[2]), verse: null };
+  return null;
+}
+
+// Build a flat list of {displayName, fullName, aliases} for autocomplete
+const BOOK_ENTRIES = [];
+// Map full name → all matching alias keys
+const _aliasKeysFor = (fullName) => {
+  const lower = fullName.toLowerCase();
+  const keys = [];
+  for (const [k, v] of Object.entries(BOOK_ALIASES)){
+    if (v === fullName) keys.push(k);
+  }
+  return keys;
+};
+BIBLE_BOOKS.forEach(book => {
+  const aliases = _aliasKeysFor(book);
+  const shortAlias = aliases.find(a => a.length >= 2 && a.length <= 4 && !a.match(/^\d/)) || aliases[0] || "";
+  BOOK_ENTRIES.push({ fullName: book, shortAlias, aliases });
+});
+
+// ---- Custom autocomplete dropdown ----
+const refInput = $("#bible-ref-input");
+const refDropdown = $("#ref-dropdown");
+let ddIndex = -1;
+let ddItems = [];
+
+function getBookPortion(val){
+  const m = val.match(/^([\d\s]*[A-Za-z].*?)(?:\s+\d|$)/);
+  return m ? m[1].trim() : val.trim();
+}
+
+function filterBooks(query){
+  if (!query) return [];
+  const lower = query.toLowerCase();
+  const results = [];
+  // Exact alias match first
+  for (const entry of BOOK_ENTRIES){
+    for (const a of entry.aliases){
+      if (a === lower){ results.push({...entry, matchType:"alias"}); break; }
+    }
+  }
+  // Prefix match on full name
+  for (const entry of BOOK_ENTRIES){
+    if (results.find(r => r.fullName === entry.fullName)) continue;
+    if (entry.fullName.toLowerCase().startsWith(lower)){
+      results.push({...entry, matchType:"prefix"});
+    }
+  }
+  // Contains match
+  for (const entry of BOOK_ENTRIES){
+    if (results.find(r => r.fullName === entry.fullName)) continue;
+    if (entry.fullName.toLowerCase().includes(lower)){
+      results.push({...entry, matchType:"contains"});
+    }
+  }
+  return results.slice(0, 12);
+}
+
+function openDropdown(matches, bookPortion){
+  refDropdown.innerHTML = "";
+  ddItems = [];
+  ddIndex = -1;
+  if (!matches.length){ refDropdown.classList.remove("open"); return; }
+  matches.forEach((m, i) => {
+    const div = document.createElement("div");
+    div.className = "ref-dd-item";
+    const suffix = (m.shortAlias && m.shortAlias !== m.fullName.toLowerCase())
+      ? '<span class="dd-alias">' + escapeHtml(m.shortAlias) + '</span>'
+      : '';
+    div.innerHTML = '<span>' + escapeHtml(m.fullName) + '</span>' + suffix;
+    div.onmousedown = (e) => {
+      e.preventDefault();
+      selectBook(m.fullName, bookPortion);
+    };
+    refDropdown.appendChild(div);
+    ddItems.push({ el: div, fullName: m.fullName });
+  });
+  refDropdown.classList.add("open");
+}
+
+function selectBook(fullName, bookPortion){
+  // Preserve whatever the user typed after the book name (chapter:verse part)
+  const raw = refInput.value;
+  const afterBook = raw.substring(bookPortion.length);
+  refInput.value = fullName + afterBook;
+  refDropdown.classList.remove("open");
+  refInput.focus();
+  // Place cursor after book name
+  const pos = fullName.length;
+  refInput.setSelectionRange(pos, pos);
+}
+
+function closeDropdown(){
+  refDropdown.classList.remove("open");
+  ddIndex = -1;
+}
+
+refInput.addEventListener("input", function(){
+  const val = this.value;
+  const bookPart = getBookPortion(val);
+  // Only show dropdown if user is still typing the book name (no chapter yet)
+  const isTypingBook = !val.match(/\d+\s*$/);
+  if (isTypingBook && bookPart.length >= 1){
+    const matches = filterBooks(bookPart);
+    openDropdown(matches, bookPart);
+  } else {
+    closeDropdown();
+  }
+});
+
+refInput.addEventListener("keydown", function(ev){
+  const items = refDropdown.querySelectorAll(".ref-dd-item");
+  if (!items.length){
+    if (ev.key === "Enter"){
+      ev.preventDefault();
+      doBibleRefLookup(this.value.trim());
+    }
+    return;
+  }
+  if (ev.key === "ArrowDown"){
+    ev.preventDefault();
+    ddIndex = Math.min(ddIndex + 1, items.length - 1);
+    items.forEach((el,i) => el.classList.toggle("active", i === ddIndex));
+  } else if (ev.key === "ArrowUp"){
+    ev.preventDefault();
+    ddIndex = Math.max(ddIndex - 1, 0);
+    items.forEach((el,i) => el.classList.toggle("active", i === ddIndex));
+  } else if (ev.key === "Enter"){
+    ev.preventDefault();
+    if (ddIndex >= 0 && ddIndex < ddItems.length){
+      const bookPortion = getBookPortion(this.value);
+      selectBook(ddItems[ddIndex].fullName, bookPortion);
+    } else {
+      closeDropdown();
+      doBibleRefLookup(this.value.trim());
+    }
+  } else if (ev.key === "Escape"){
+    closeDropdown();
+  }
+});
+
+refInput.addEventListener("blur", function(){
+  setTimeout(closeDropdown, 150);
+});
+
+function doBibleRefLookup(ref){
+  if (!ref) return;
+  const parsed = parseBibleRef(ref);
+  if (parsed){
+    _bibleLookupRef = parsed;
+    if (parsed.verse){
+      loadChapter(session.translation || "NKJV", parsed.book, parsed.chapter, parsed.verse);
+    } else {
+      loadChapter(session.translation || "NKJV", parsed.book, parsed.chapter, 1);
+    }
+  } else {
+    toast("enter 'Book Chapter' or 'Book Chapter:Verse' (e.g. Gen 1:1, Romans 8)");
+  }
+}
+
+// ---- Light / Dark mode toggle ----
+const savedMode = localStorage.getItem("faithview-theme-mode");
+if (savedMode === "light") document.body.classList.add("light-mode");
+
+$("#theme-toggle").onclick = () => {
+  document.body.classList.toggle("light-mode");
+  const isLight = document.body.classList.contains("light-mode");
+  localStorage.setItem("faithview-theme-mode", isLight ? "light" : "dark");
+};
+
 // ---- WebSocket ----
 function connect(){
   ws = new WebSocket(WS_URL);
-  $("#status-pill").classList.remove("live");
+  $("#source-toggle").querySelector('[data-source="offline"]').classList.add("active");
+  $("#source-toggle").querySelector('[data-source="whisper"]').classList.remove("active");
   ws.onopen = () => {
-    $("#status-pill").classList.add("live");
+    $("#source-toggle").querySelector('[data-source="offline"]').classList.remove("active");
+    $("#source-toggle").querySelector('[data-source="whisper"]').classList.add("active");
     $("#transcribe-status").innerHTML = '<span class="mic-dot"></span> Listening…';
+    $("#transcribe-status-bottom").innerHTML = '<span class="mic-dot"></span> Start transcribing';
   };
   ws.onclose = () => {
-    $("#status-pill").classList.remove("live");
+    $("#source-toggle").querySelector('[data-source="offline"]').classList.add("active");
+    $("#source-toggle").querySelector('[data-source="whisper"]').classList.remove("active");
     $("#transcribe-status").innerHTML = '<span class="mic-dot" style="background:var(--accent-red-line)"></span> Disconnected';
+    $("#transcribe-status-bottom").innerHTML = '<span class="mic-dot" style="background:var(--accent-red-line)"></span> Disconnected';
     setTimeout(connect, 2000);
   };
   ws.onerror = () => { ws.close(); };
@@ -701,13 +1042,11 @@ function connect(){
   };
 }
 
-// ---- Transcript panel ----
-let transcriptLines = [];
+// ---- Transcript ----
 function addTranscript(m){
   const body = $("#transcript-body");
   const empty = body.querySelector(".empty");
   if (empty) empty.remove();
-  // mark previous last as not-current
   const prev = body.querySelector(".transcript-line.current");
   if (prev) prev.classList.remove("current");
   const line = document.createElement("p");
@@ -718,11 +1057,10 @@ function addTranscript(m){
   body.scrollTop = body.scrollHeight;
 }
 function clearTranscript(){
-  const body = $("#transcript-body");
-  body.innerHTML = '<div class="empty">transcript cleared</div>';
+  $("#transcript-body").innerHTML = '<div class="empty">transcript cleared</div>';
 }
 
-// ---- Detections panel ----
+// ---- Detections ----
 function confClass(band){
   if (!band) return "conf-low";
   const b = band.replace(/\s+/g,"-").toLowerCase();
@@ -756,18 +1094,17 @@ function addDetection(m){
   while (body.children.length > 50) body.removeChild(body.lastChild);
 }
 $("#clear-detections").onclick = () => {
-  const body = $("#detections-body");
-  body.innerHTML = '<div class="empty">no detections yet</div>';
+  post("/detections/clear", {}).then(() => {
+    clearDetections();
+    toast("detections cleared");
+  }).catch(() => clearDetections());
 };
 function clearDetections(){
   const body = $("#detections-body");
   body.innerHTML = '<div class="empty">no detections yet</div>';
-  $("#search-results").style.display = "none";
-  body.style.display = "";
-  $("#search-input").value = "";
 }
 
-// ---- Display panel ----
+// ---- Display ----
 function setDisplay(m){
   const slide = $("#live-slide");
   const empty = $("#display-empty");
@@ -775,15 +1112,65 @@ function setDisplay(m){
     slide.classList.add("hidden");
     empty.style.display = "block";
     empty.textContent = "display cleared";
+    // Also clear output frame
+    const of = $("#output-frame");
+    of.style.background = 'radial-gradient(circle at 50% 30%, #4a9eff 0%, #1a3a6a 55%, #0a0f1a 100%)';
+    $("#output-overlay").style.display = "none";
     return;
   }
   slide.classList.remove("hidden");
   empty.style.display = "none";
-  $("#live-slide-ref").textContent = ((m.reference||"").toUpperCase() + " (" + (m.translation||"") + ")");
+  $("#live-slide-ref").textContent = ((m.reference||"").toUpperCase() + " (" + (m.translation||")") + ")");
   $("#live-slide-text").textContent = m.text || "";
+
+  // ---- Update output frame (column 4) ----
+  const of = $("#output-frame");
+  const overlay = $("#output-overlay");
+  const vt = $("#output-vtext");
+  const vr = $("#output-vref");
+
+  if (m.theme && typeof m.theme === 'object'){
+    // Apply theme background to output frame
+    const canvasCfg = m.theme.canvas;
+    const bgObj = m.theme.background;
+    if (canvasCfg){
+      if (canvasCfg.bgType === 'image' && canvasCfg.bgImage){
+        of.style.background = 'linear-gradient(rgba(0,0,0,0.15),rgba(0,0,0,0.25)),url("' + canvasCfg.bgImage + '")';
+        of.style.backgroundSize = canvasCfg.bgFit || 'cover';
+      } else {
+        of.style.background = canvasCfg.bgColor || '#1a3a6a';
+      }
+    } else if (bgObj){
+      if (bgObj.image && bgObj.image !== 'none' && !bgObj.image.startsWith('none')){
+        of.style.background = bgObj.image;
+        of.style.backgroundSize = 'cover';
+      } else if (bgObj.color){
+        of.style.background = bgObj.color;
+      }
+    }
+
+    // Extract verse/ref text from theme elements
+    let vText = '', vRef = '';
+    if (Array.isArray(m.theme.elements)){
+      for (const el of m.theme.elements){
+        if (!el || !el.type) continue;
+        if (el.type === 'verse') vText = el.text || vText;
+        if (el.type === 'ref') vRef = el.text || vRef;
+      }
+    }
+    overlay.style.display = "flex";
+    vt.textContent = vText || m.text || "";
+    vr.textContent = vRef || ((m.reference||"").toUpperCase()) + " | " + (m.translation||"");
+  } else {
+    // Plain text display - keep blue gradient
+    of.style.background = 'radial-gradient(circle at 50% 30%, #4a9eff 0%, #1a3a6a 55%, #0a0f1a 100%)';
+    overlay.style.display = "flex";
+    vt.textContent = m.text || "";
+    vr.textContent = ((m.reference||"").toUpperCase()) + " | " + (m.translation||"");
+  }
 }
 
-// ---- Queue panel ----
+// ---- Queue ----
 function addToQueue(det){
   post("/queue/add", {
     reference: det.reference, translation: det.translation, text: det.text,
@@ -822,7 +1209,7 @@ function renderQueue(){
 }
 $("#clear-queue").onclick = () => post("/queue/clear", {}).then(() => toast("queue cleared"));
 
-// ---- Session (current_reference) / Bible reader ----
+// ---- Session / Bible reader ----
 function updateSession(m){
   session = {
     translation: m.translation || "NKJV",
@@ -862,40 +1249,51 @@ function renderVerses(verses, activeVerse){
     row.innerHTML =
       '<span class="verse-num">' + v.verse + '</span>' +
       '<span class="verse-text">' + escapeHtml(v.text) + '</span>';
-    row.onclick = () => {
+    // Single click: preview
+    row.onclick = (e) => {
       const text = v.text;
-      setPreview(text, session.book + " " + session.chapter + ":" + v.verse + " (" + session.translation + ")");
-      // highlight clicked row
+      const ref = session.book + " " + session.chapter + ":" + v.verse;
+      setPreview(text, ref + " (" + session.translation + ")");
+      previewData = { reference: ref, translation: session.translation, text: text };
       body.querySelectorAll(".verse-row").forEach(r => r.classList.remove("active"));
       row.classList.add("active");
       session.verse = v.verse;
+    };
+    // Double click: present to live display
+    row.ondblclick = (e) => {
+      e.preventDefault();
+      const ref = session.book + " " + session.chapter + ":" + v.verse;
+      const det = { reference: ref, translation: session.translation, text: v.text };
+      present(det);
+      previewData = det;
+      setPreview(v.text, ref + " (" + session.translation + ")");
     };
     body.appendChild(row);
   }
   body.scrollTop = 0;
 }
 
-// ---- Preview panel ----
+// ---- Preview ----
 function setPreview(text, cite){
   $("#preview-txt").textContent = text || "";
   $("#preview-cite").textContent = cite || "";
 }
 
-// ---- Bible toolbar buttons ----
+// ---- Verse nav ----
 function navVerse(delta){
-  // Not persisted on server -- just visually browse the chapter's verses
   let v = (session.verse || 1) + delta;
   if (v < 1) return;
   session.verse = v;
   renderVerses(currentVerses || [], v);
   const row = document.querySelector(".verse-row.active");
   if (row && row.querySelector(".verse-text")) {
+    const ref = session.book + " " + session.chapter + ":" + v;
     setPreview(row.querySelector(".verse-text").textContent,
-      session.book + " " + session.chapter + ":" + v + " (" + session.translation + ")");
+      ref + " (" + session.translation + ")");
+    previewData = { reference: ref, translation: session.translation, text: row.querySelector(".verse-text").textContent };
   }
 }
 let currentVerses = [];
-// Hook renderVerses to cache data
 const _origRenderVerses = renderVerses;
 renderVerses = function(verses, activeVerse){
   currentVerses = verses;
@@ -912,99 +1310,17 @@ $("#btn-next-chapter").onclick = () => {
   const c = (session.chapter || 1) + 1;
   loadChapter(session.translation || "NKJV", session.book || "Genesis", c, 1);
 };
-// ---- Bible reference input with autocomplete and Chapter:Verse support ----
-const BIBLE_BOOKS = [
-  "Genesis","Exodus","Leviticus","Numbers","Deuteronomy",
-  "Joshua","Judges","Ruth","1 Samuel","2 Samuel","1 Kings","2 Kings",
-  "1 Chronicles","2 Chronicles","Ezra","Nehemiah","Esther","Job",
-  "Psalms","Proverbs","Ecclesiastes","Song of Solomon","Isaiah",
-  "Jeremiah","Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos",
-  "Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah","Haggai",
-  "Zechariah","Malachi","Matthew","Mark","Luke","John","Acts",
-  "Romans","1 Corinthians","2 Corinthians","Galatians","Ephesians",
-  "Philippians","Colossians","1 Thessalonians","2 Thessalonians",
-  "1 Timothy","2 Timothy","Titus","Philemon","Hebrews","James",
-  "1 Peter","2 Peter","1 John","2 John","3 John","Jude","Revelation"
-];
-const bookDatalist = $("#bible-book-list");
-BIBLE_BOOKS.forEach(b => { const o = document.createElement("option"); o.value = b; bookDatalist.appendChild(o); });
 
-let _bibleLookupRef = null;  // {book, chapter, verse} persisted across version changes
-
-$("#bible-ref-input").onkeydown = function(ev){
-  if (ev.key === "Enter"){ _doReferenceLookup(this.value.trim(), "bible-verses", true); }
-};
-
-function _doReferenceLookup(ref, versesDivId, updateMain){
-  if (!ref) return;
-  // Book Chapter:Verse
-  let m = ref.match(/^(.+?)\s+(\d+):(\d+)$/);
-  if (m){
-    _bibleLookupRef = { book: m[1], chapter: parseInt(m[2]), verse: parseInt(m[3]) };
-    if (updateMain) $("#bible-ref-input").value = _bibleLookupRef.book + " " + _bibleLookupRef.chapter + ":" + _bibleLookupRef.verse;
-    _lookupAndRender(_bibleLookupRef.book, _bibleLookupRef.chapter, _bibleLookupRef.verse, versesDivId);
-    return;
-  }
-  // Book Chapter
-  m = ref.match(/^(.+?)\s+(\d+)$/);
-  if (m){
-    _bibleLookupRef = { book: m[1], chapter: parseInt(m[2]), verse: null };
-    if (updateMain) $("#bible-ref-input").value = _bibleLookupRef.book + " " + _bibleLookupRef.chapter;
-    _lookupAndRender(_bibleLookupRef.book, _bibleLookupRef.chapter, 1, versesDivId);
-    return;
-  }
-  toast("enter 'Book Chapter' or 'Book Chapter:Verse'");
-}
-
-async function _lookupAndRender(book, chapter, verse, versesDivId){
-  const ver = session.translation || "NKJV";
-  try {
-    const r = await fetch(API + "/bible/" + encodeURIComponent(ver) + "/" + encodeURIComponent(book) + "/" + chapter);
-    const data = await r.json();
-    if (!data.verses){ toast("no verses found"); return; }
-    const body = $("#" + versesDivId);
-    body.innerHTML = "";
-    const activeV = verse || 1;
-    for (const v of data.verses){
-      const row = document.createElement("div");
-      row.className = "verse-row";
-      if (v.verse === activeV) row.classList.add("active");
-      row.innerHTML =
-        '<span class="verse-num">' + v.verse + '</span>' +
-        '<span class="verse-text">' + escapeHtml(v.text) + '</span>';
-      row.onclick = () => {
-        setPreview(v.text, book + " " + chapter + ":" + v.verse + " (" + data.translation + ")");
-        body.querySelectorAll(".verse-row").forEach(r => r.classList.remove("active"));
-        row.classList.add("active");
-      };
-      body.appendChild(row);
-    }
-    body.scrollTop = 0;
-    // Update main session state too
-    if (data.book) session.translation = data.translation;
-    if (data.book) session.book = data.book;
-    if (data.chapter) session.chapter = data.chapter;
-    if (verse) session.verse = verse;
-  } catch(e){ toast("lookup error"); }
-}
-
+// ---- Bible reference input ----
+let _bibleLookupRef = null;
 
 $("#version-select").onchange = function(){
-  if (_bibleLookupRef && _bibleLookupRef.book){
-    const ver = this.value;
-    loadChapter(ver, _bibleLookupRef.book, _bibleLookupRef.chapter, _bibleLookupRef.verse || 1);
-    _lookupAndRender(_bibleLookupRef.book, _bibleLookupRef.chapter, _bibleLookupRef.verse || 1, "ref-lookup-verses");
-  } else if (session.book){
+  if (session.book){
     loadChapter(this.value, session.book, session.chapter, session.verse);
   }
 };
 
-// Second reference input (Lookup panel)
-BIBLE_BOOKS.forEach(b => { const o = document.createElement("option"); o.value = b; $("#bible-book-list2").appendChild(o); });
-$("#bible-ref-input2").onkeydown = function(ev){
-  if (ev.key === "Enter"){ _doReferenceLookup(this.value.trim(), "ref-lookup-verses", false); }
-};
-// ---- Source toggle (Whisper / Deepgram) ----
+// ---- Source toggle ----
 function updateSource(source){
   const btns = $$("#source-toggle button");
   btns.forEach(b => b.classList.toggle("active", b.dataset.source === source));
@@ -1012,14 +1328,26 @@ function updateSource(source){
 $$("#source-toggle button").forEach(btn => {
   btn.onclick = () => {
     const src = btn.dataset.source;
-    post("/transcription-source", {source: src}).then(r => {
-      if (r && r.source) toast("switched to " + r.source);
-      else if (r && r.error) toast(r.error);
-    });
+    updateSource(src);
+    const statusEl = $("#transcribe-status");
+    if (src === "offline"){
+      statusEl.innerHTML = '<span class="mic-dot" style="background:var(--text-muted)"></span> Offline';
+      $("#transcribe-status-bottom").innerHTML = '<span class="mic-dot" style="background:var(--text-muted)"></span> Offline';
+      post("/transcription-source", {source: "offline"}).then(r => {
+        if (r && r.error) toast(r.error);
+      });
+    } else {
+      statusEl.innerHTML = '<span class="mic-dot"></span> Listening…';
+      $("#transcribe-status-bottom").innerHTML = '<span class="mic-dot"></span> Start transcribing';
+      post("/transcription-source", {source: src}).then(r => {
+        if (r && r.source) toast("switched to " + r.source);
+        else if (r && r.error) toast(r.error);
+      });
+    }
   };
 });
 
-// ---- Mode toggle (Semi / Auto / Manual) ----
+// ---- Mode toggle ----
 function updateMode(mode){
   const btns = $$("#mode-toggle button");
   btns.forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
@@ -1039,52 +1367,7 @@ $$("#mode-toggle button").forEach(btn => {
   };
 });
 
-// ---- Search ----
-$("#search-btn").onclick = () => doSearch();
-$("#search-input").onkeydown = (ev) => {
-  if (ev.key === "Enter") doSearch();
-};
-async function doSearch(){
-  const q = $("#search-input").value.trim();
-  if (!q) return;
-  const resultsDiv = $("#search-results");
-  const detectBody = $("#detections-body");
-  resultsDiv.innerHTML = '<div class="empty">searching…</div>';
-  resultsDiv.style.display = "block";
-  detectBody.style.display = "none";
-  try {
-    const r = await fetch(API + "/search?q=" + encodeURIComponent(q) + "&top_k=10");
-    const data = await r.json();
-    if (data.error){ resultsDiv.innerHTML = '<div class="empty">'+escapeHtml(data.error)+'</div>'; return; }
-    if (!data.results || !data.results.length){
-      resultsDiv.innerHTML = '<div class="empty">no results</div>'; return;
-    }
-    resultsDiv.innerHTML = "";
-    for (const item of data.results){
-      const pct = Math.round((item.score||0)*100);
-      const card = document.createElement("div");
-      card.className = "search-result";
-      card.innerHTML =
-        '<div class="search-result-ref">' + escapeHtml((item.reference||"").toUpperCase()) + ' <span class="search-result-score">' + pct + '%</span></div>' +
-        '<div class="search-result-text">' + escapeHtml(item.text||"") + '</div>' +
-        '<div class="detect-actions">' +
-          '<button class="btn" data-act="queue">+ Add to queue</button>' +
-          '<button class="btn primary" data-act="present">▶ Present</button>' +
-        '</div>';
-      card.querySelector('[data-act="queue"]').onclick = () => addToQueue(item);
-      card.querySelector('[data-act="present"]').onclick = () => present(item);
-      resultsDiv.appendChild(card);
-    }
-  } catch(e){ resultsDiv.innerHTML = '<div class="empty">search error</div>'; }
-}
-$("#search-input").oninput = function(){
-  if (!this.value.trim()){
-    $("#search-results").style.display = "none";
-    $("#detections-body").style.display = "";
-  }
-};
-
-// ---- Manual Search panel (bottom bar) ----
+// ---- Search Engine ----
 $("#ms-btn").onclick = () => doManualSearch();
 $("#ms-input").onkeydown = (ev) => {
   if (ev.key === "Enter") doManualSearch();
@@ -1115,23 +1398,65 @@ async function doManualSearch(){
         '</div>';
       card.querySelector('[data-act="queue"]').onclick = () => addToQueue(item);
       card.querySelector('[data-act="present"]').onclick = () => present(item);
+      card.onmouseenter = () => {
+        setPreview(item.text || "", (item.reference||"").toUpperCase() + " (" + (item.translation||"") + ")");
+        previewData = { reference: item.reference, translation: item.translation, text: item.text };
+      };
       resultsDiv.appendChild(card);
     }
   } catch(e){ resultsDiv.innerHTML = '<div class="empty">search error</div>'; }
 }
-$("#bible-ref-input").onkeydown = function(ev){
-  if (ev.key === "Enter"){
-    const ref = this.value.trim();
-    const m = ref.match(/^(.+)\s+(\d+)$/);
-    if (m){
-      const book = m[1];
-      const chapter = parseInt(m[2]);
-      loadChapter(session.translation || "NKJV", book, chapter, 1);
-    } else {
-      toast("enter 'Book chapter' e.g. Romans 8");
-    }
+
+// ---- Top nav buttons ----
+$("#top-present-btn").onclick = () => {
+  if (previewData){
+    present(previewData);
+  } else {
+    toast("select a verse first");
   }
 };
+$("#top-clear-btn").onclick = () => {
+  post("/display/clear", {}).then(() => toast("display cleared"));
+};
+
+// ---- Preview Present button ----
+$("#preview-present-btn").onclick = () => {
+  if (previewData){
+    present(previewData);
+  } else {
+    toast("select a verse first");
+  }
+};
+
+// ---- Preview fullscreen ----
+$("#preview-fullscreen").onclick = () => {
+  const frame = $("#preview-frame");
+  if (frame.requestFullscreen) frame.requestFullscreen();
+  else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
+};
+
+// ---- Transcribe status click ----
+$("#transcribe-status").onclick = () => {
+  const statusEl = $("#transcribe-status");
+  const isListening = statusEl.textContent.includes("Listening");
+  if (isListening){
+    post("/transcription-source", {source: "offline"}).then(() => {
+      updateSource("offline");
+      statusEl.innerHTML = '<span class="mic-dot" style="background:var(--text-muted)"></span> Paused';
+    });
+  } else {
+    post("/transcription-source", {source: "whisper"}).then(() => {
+      updateSource("whisper");
+      statusEl.innerHTML = '<span class="mic-dot"></span> Listening…';
+    });
+  }
+};
+
+// ---- Nav icon buttons ----
+$("#nav-settings").onclick = () => { window.location.href = "/settings.html"; };
+$("#nav-themes").onclick = () => { window.location.href = "/themes.html"; };
+$("#nav-outputs").onclick = () => { window.open("/output.html", "_blank"); };
+$("#goto-output").onclick = () => { window.open("/output.html", "_blank"); };
 
 // ---- Start ----
 connect();

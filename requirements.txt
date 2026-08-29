@@ -39,3 +39,8 @@ websockets>=13.0   # used by the WS /ws endpoint and the test clients
 
 # Optional: load .env files for API keys (Deepgram, etc.)
 python-dotenv>=1.0.0
+
+# NDI output (ndi_output.py): server-side slide rendering for the NDI sender.
+# Note: the NDI runtime (libndi) itself is loaded dynamically via ctypes and
+# must be installed separately (see the Streaming / NDI settings page).
+Pillow>=10.0.0

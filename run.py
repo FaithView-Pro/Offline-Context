@@ -53,7 +53,7 @@ def main() -> int:
                                          "(list of {text,start_time,end_time}); skips Whisper")
     ap.add_argument("--out", default="results.json", help="output JSON path")
     ap.add_argument("--index-dir", default=config.INDEX_DIR)
-    ap.add_argument("--quote-detector", default="heuristic", choices=["heuristic", "onnx"])
+    ap.add_argument("--quote-detector", default="heuristic", choices=["heuristic", "onnx", "hybrid"])
     ap.add_argument("--quote-threshold", type=float, default=config.QUOTE_THRESHOLD)
     ap.add_argument("--top-k", type=int, default=config.TOP_K)
     ap.add_argument("--cross-encoder", action="store_true", help="enable optional cross-encoder re-rank")

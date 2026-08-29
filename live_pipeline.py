@@ -98,7 +98,7 @@ class LivePipeline:
         # widened from 4s to create that margin (benchmark_live_chunk.py).
         chunk_seconds: float = 8.0,
         overlap_seconds: float = 2.0,
-        quote_detector_kind: str = "heuristic",     # "onnx" | "heuristic" | "semantic"
+        quote_detector_kind: str = "heuristic",     # "hybrid" | "onnx" | "heuristic" | "semantic"
         quote_threshold: float = config.QUOTE_THRESHOLD,
         top_k: int = config.TOP_K,
         live_confidence_floor: float = 0.45,        # surface >= this in live mode
@@ -148,7 +148,7 @@ class LivePipeline:
         # it's live-mode orchestration only, and it's configurable/offable.
         self.live_rescue = True
         self.rescue_heuristic_floor = 0.15
-        self.rescue_min_words = 4
+        self.rescue_min_words = 3
         self._rescue_heur = None
 
         self.session = intent_router.SessionState()
@@ -206,19 +206,24 @@ class LivePipeline:
             self._build_detector(self.quote_detector_kind)
 
     def _build_detector(self, kind: str):
-        kind = kind or "heuristic"
+        kind = kind or "hybrid"
         if kind == "onnx":
-            here = config.HERE
             try:
                 self._detector = quote_detect.get_detector(
                     "onnx",
-                    model_path=os.path.join(here, "onnx_model", "model.onnx"),
-                    tokenizer_path=os.path.join(here, "onnx_model"),
+                    model_path=config.ONNX_MODEL_PATH,
+                    tokenizer_path=config.ONNX_TOKENIZER_PATH,
+                    positive_index=config.ONNX_POSITIVE_INDEX,
                 )
                 print("[pipeline] ONNX quote detector loaded", flush=True)
             except Exception as exc:
                 print(f"[pipeline] ONNX load failed ({exc}); falling back to heuristic", flush=True)
                 self._detector = quote_detect.get_detector("heuristic")
+        elif kind == "hybrid":
+            # Strong rules first (cue/reference/attribution), ONNX as fallback;
+            # degrades to strong rules only if ONNX is unavailable.
+            self._detector = quote_detect.get_detector("hybrid")
+            print("[pipeline] hybrid quote detector loaded (strong rules + ONNX fallback)", flush=True)
         elif kind == "semantic":
             self._detector = quote_detect.get_detector("semantic", retriever=self._retriever)
         else:
@@ -227,7 +232,7 @@ class LivePipeline:
     # =================================================================
     # Main live control
     # =================================================================
-    def start(self, source: AudioSource, quote_detector_kind: str = "onnx"):
+    def start(self, source: AudioSource, quote_detector_kind: str = "hybrid"):
         self.quote_detector_kind = quote_detector_kind
         self._ensure_resources()
         self._start_transcription_source(source)
@@ -248,7 +253,7 @@ class LivePipeline:
             self._transcription_source = self._build_whisper_source(prompt)
 
         self._transcription_source.start(audio_source, self._on_new_segment,
-                                          on_interim=self.on_transcript)
+                                          on_interim=self._on_interim_update)
 
     def _build_whisper_source(self, prompt: Optional[str] = None) -> WhisperTranscriptionSource:
         return WhisperTranscriptionSource(
@@ -325,6 +330,53 @@ class LivePipeline:
             self._processed_windows.add(w.index)
             self._route_window(w)
 
+    def _on_interim_update(self, seg: Segment):
+        """Handle interim (non-final) transcript from Deepgram.
+
+        Interims are progressive refinements of the SAME utterance, not new
+        utterances.  We update the display and the CUE accumulator in place
+        so that Scripture detection sees the latest/best text.
+
+        FAISS search is NOT run on interims — only complete sentences
+        (ending with . ! ?) trigger retrieval.
+        """
+        if not self._cue_transcribing:
+            return
+        # 1. Update the live caption display
+        try:
+            self.on_transcript(seg)
+        except Exception as exc:
+            print(f"[pipeline] on_transcript error: {exc}")
+
+        # 2. Update the CUE accumulator with the latest interim text.
+        #    The accumulator holds the evolving utterance; interims REPLACE
+        #    the candidate text rather than appending.
+        #    No FAISS search here — wait for a complete sentence.
+        candidate_text = (seg.text or "").strip()
+        if not candidate_text:
+            return
+        word_count = len(candidate_text.split())
+        if word_count < self.rescue_min_words:
+            return
+
+        if self._cue_accum is not None:
+            # Check if this interim starts with a new trigger phrase
+            # (different utterance) — if so, close the old one and start fresh
+            if self._cue_new_trigger_re.match(candidate_text.lower()):
+                self._close_cue_accum()
+            else:
+                # Same utterance — replace the accumulator text in place
+                self._cue_accum["candidate"] = candidate_text
+                self._cue_accum["full"] = candidate_text
+                return
+
+        # Open a fresh accumulator for this evolving utterance
+        self._cue_accum = {
+            "full": candidate_text,
+            "candidate": candidate_text,
+            "win": None,  # interims don't carry a Window
+        }
+
     # =================================================================
     # Routing
     # =================================================================
@@ -388,10 +440,16 @@ class LivePipeline:
     _TAIL_WINDOW_WORDS = 20
 
     def _extend_cue_accum(self, w: Window) -> None:
-        """Append window text to the live CUE accumulator; search at each step."""
+        """Append window text to the live CUE accumulator.
+
+        FAISS search only runs when the text ends with sentence punctuation
+        (. ! ?) — incomplete fragments are accumulated but not searched.
+        """
         text = w.candidate_text or ""
         if len(text.split()) < self.rescue_min_words:
             return
+
+        has_end = bool(self._CUE_END_RE.search(text))
 
         if self._cue_accum is not None:
             # New trigger phrase starting while accumulator is open →
@@ -400,13 +458,20 @@ class LivePipeline:
                 self._close_cue_accum()
                 # fall through to open new accumulator below
             else:
-                # Extend existing accumulator
-                self._cue_accum["full"] += " " + (w.text or text)
-                self._cue_accum["candidate"] += " " + text
-                # Check sentence-ending punctuation in latest chunk
-                has_end = bool(self._CUE_END_RE.search(text))
-                self._run_accumulated_search(is_final=has_end)
+                existing = self._cue_accum["candidate"]
+                # If the new text contains the existing text (or vice versa),
+                # this is the same utterance arriving as a final after interims.
+                # Replace rather than append to avoid duplication.
+                if text in existing or existing in text:
+                    self._cue_accum["full"] = w.text or text
+                    self._cue_accum["candidate"] = text
+                else:
+                    # Genuine extension (Whisper chunking or new pause window)
+                    self._cue_accum["full"] += " " + (w.text or text)
+                    self._cue_accum["candidate"] += " " + text
+                # Only search on complete sentences
                 if has_end:
+                    self._run_accumulated_search(is_final=True)
                     self._cue_accum = None
                 return
 
@@ -416,9 +481,8 @@ class LivePipeline:
             "candidate": text,
             "win": w,
         }
-        has_end = bool(self._CUE_END_RE.search(text))
-        self._run_accumulated_search(is_final=has_end)
         if has_end:
+            self._run_accumulated_search(is_final=True)
             self._cue_accum = None
 
     def _close_cue_accum(self) -> None:
@@ -685,7 +749,10 @@ def _cli():
     ap.add_argument("--chunk", type=float, default=8.0,
                     help="chunk window seconds (was 4.0; widened for small.en per benchmark)")
     ap.add_argument("--overlap", type=float, default=2.0)
-    ap.add_argument("--detector", default="onnx", choices=["onnx", "heuristic", "semantic"])
+    ap.add_argument("--detector", default="hybrid",
+                    choices=["hybrid", "onnx", "heuristic", "semantic"],
+                    help="quote detector: 'hybrid' = strong rules (cue/reference/attribution) "
+                         "first, trained ONNX model as fallback (default)")
     ap.add_argument("--quote-threshold", type=float, default=config.QUOTE_THRESHOLD)
     ap.add_argument("--top-k", type=int, default=config.TOP_K)
     ap.add_argument("--floor", type=float, default=0.45,

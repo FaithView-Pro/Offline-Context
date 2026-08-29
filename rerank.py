@@ -1,18 +1,20 @@
-"""Stage 5 -- HYBRID RE-RANKING.
+"""Stage 5 -- RE-RANKING.
 
-Re-score retrieved candidates with a weighted blend:
+Re-score retrieved Bible verse candidates using ONLY the current sentence's
+evidence:
 
-    45% semantic similarity   (cosine from FAISS)
+    80% semantic similarity   (cosine from FAISS retrieval)
     20% keyword/lexical overlap
-    15% sermon context match  (running book/keyword tracker)
-    10% match vs previously accepted verses this transcript
-    10% quote-detection probability
+
+Previous sermon detections, running context, and Stage 3's quote-detection
+probability do NOT influence candidate ranking -- the current sentence alone
+determines which verse wins.
 
 When the same reference appears from both translations, the higher-scoring
 translation is kept as the *representative* (selected) candidate, but the other
 is retained in the raw candidate list for debugging.
 
-Optionally, the Top 10 are re-scored with a cross-encoder
+Optionally, the Top N are re-scored with a cross-encoder
 (``cross-encoder/ms-marco-MiniLM-L-6-v2``) and blended in for an extra accuracy
 boost. This is opt-in (needs an extra model download) and degrades gracefully.
 """
@@ -118,13 +120,21 @@ def rerank_candidates(
     cross_encoder=None,
     ce_topn: int = config.CROSS_ENCODER_TOPN,
 ) -> list[RankedCandidate]:
-    """Re-rank candidates by the hybrid blend. Returns list sorted by final desc."""
+    """Re-rank candidates by the semantic + lexical blend.
+
+    Returns list sorted by final score descending.  The ``context``,
+    ``accepted_keys`` and ``accepted_books`` parameters are accepted for
+    backward compatibility but have zero weight in the default configuration;
+    they do NOT influence ranking.
+    """
     ranked: list[RankedCandidate] = []
     for c in candidates:
         sem = max(0.0, min(1.0, c.score))           # cosine ~ [0,1] for related text
         lex = lexical_score(query_text, c)
-        ctx = context.score(c)
-        hist = history_score(c, accepted_keys, accepted_books)
+        # Context / history / quote_prob are zero-weighted by default.  Skip
+        # the (potentially expensive) context.score() call when not needed.
+        ctx = context.score(c) if weights.context else 0.0
+        hist = history_score(c, accepted_keys, accepted_books) if weights.history else 0.0
         final = (
             weights.semantic * sem
             + weights.lexical * lex

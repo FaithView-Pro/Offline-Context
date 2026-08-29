@@ -103,6 +103,7 @@ class AppState:
         self.lock = threading.Lock()        # guards queue mutations
         self.transcription_source = "whisper"  # "whisper" | "deepgram"
         self.mode = "semi_autopilot"           # "autopilot" | "semi_autopilot"
+        self.display: Optional[dict] = None   # last presented display/theme
 
     def init_pipeline(self, **kwargs):
         # The pipeline's callbacks push events onto the asyncio loop so the WS
@@ -195,6 +196,10 @@ class SourceReq(BaseModel):
 
 class ModeReq(BaseModel):
     mode: str  # "autopilot" | "semi_autopilot" | "manual"
+
+
+class ThemeReq(BaseModel):
+    theme: dict
 
 
 # ===========================================================================
@@ -367,6 +372,8 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
             await ws.send_text(json.dumps({"type": "queue_update", "queue": STATE.queue}))
             await ws.send_text(json.dumps({"type": "source_update", "source": STATE.transcription_source}))
             await ws.send_text(json.dumps({"type": "mode_update", "mode": STATE.mode}))
+            if STATE.display:
+                await ws.send_text(json.dumps({"type": "display_update", **STATE.display}))
         except Exception:
             STATE.clients.discard(ws)
             return
@@ -402,6 +409,25 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
             return JSONResponse({"error": "could not resolve reference"}, status_code=400)
         await _broadcast_display(ev)
         return asdict(ev)
+
+    @app.post("/present-theme")
+    async def present_theme(req: ThemeReq):
+        # Accept a full theme JSON from the theme manager and broadcast it
+        try:
+            theme = req.theme or {}
+        except Exception:
+            return JSONResponse({"error": "invalid theme payload"}, status_code=400)
+        print(f"[server] /present-theme received theme keys: {list(theme.keys())}")
+        # Store the theme in STATE.display so reconnecting clients receive it
+        STATE.display = {
+            "reference": theme.get("reference", "") or "",
+            "translation": theme.get("translation", "") or "",
+            "text": theme.get("text", "") or "",
+            "theme": theme,
+        }
+        print(f"[server] broadcasting display_update with theme (reference={STATE.display.get('reference')})")
+        await STATE.broadcast({"type": "display_update", **STATE.display})
+        return {"ok": True}
 
     @app.delete("/queue/{item_id}")
     async def queue_remove(item_id: str):
@@ -556,14 +582,44 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
         }
 
     # --- serve the frontend (Milestone 5) ---
+    here_static = os.path.dirname(os.path.abspath(__file__))
+
     @app.get("/", response_class=HTMLResponse)
     async def root():
-        here = os.path.dirname(os.path.abspath(__file__))
-        path = os.path.join(here, "static", "index.html")
+        path = os.path.join(here_static, "static", "index.html")
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as fh:
                 return HTMLResponse(fh.read())
         return HTMLResponse("<h1>FaithView Pro</h1><p>static/index.html not found.</p>")
+
+    @app.get("/output.html", response_class=HTMLResponse)
+    async def output_page():
+        path = os.path.join(here_static, "static", "output.html")
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as fh:
+                return HTMLResponse(fh.read())
+        return HTMLResponse("<h1>FaithView Pro</h1><p>output.html not found.</p>")
+
+    @app.get("/settings.html", response_class=HTMLResponse)
+    async def settings_page():
+        path = os.path.join(here_static, "static", "settings.html")
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as fh:
+                return HTMLResponse(fh.read())
+        return HTMLResponse("<h1>FaithView Pro</h1><p>settings.html not found.</p>")
+
+    @app.get("/themes.html", response_class=HTMLResponse)
+    async def themes_page():
+        path = os.path.join(here_static, "static", "faithview_theme_manager_mockup.html")
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as fh:
+                return HTMLResponse(fh.read())
+        return HTMLResponse("<h1>FaithView Pro</h1><p>theme manager not found.</p>")
+
+    # --- clear detections endpoint ---
+    @app.post("/detections/clear")
+    async def detections_clear():
+        return {"ok": True}
 
     return app
 

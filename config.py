@@ -61,20 +61,37 @@ CROSS_ENCODER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 OFFLINE = os.environ.get("FAITHVIEW_OFFLINE", "1") != "0"
 
 # --- Stage 3: quote detection ---------------------------------------------
-QUOTE_THRESHOLD = 0.70           # only windows >= this proceed to retrieval
+QUOTE_THRESHOLD = 0.40           # only windows >= this proceed to retrieval
+
+# --- Stage 3: ONNX fallback classifier (hybrid / onnx detectors) ------------
+# Trained DistilBERT quote classifier (train_quote_classifier.py ->
+# export_to_onnx.py). The model's config declares id2label {0: negative,
+# 1: positive}, so the positive (Scripture) class index is 1.
+# Env overrides keep paths out of the code; ONNX Runtime is only imported
+# lazily when an onnx/hybrid detector is actually constructed.
+ONNX_MODEL_PATH = os.environ.get(
+    "FAITHVIEW_ONNX_MODEL", os.path.join(HERE, "onnx_model", "model.onnx"))
+ONNX_TOKENIZER_PATH = os.environ.get(
+    "FAITHVIEW_ONNX_TOKENIZER", os.path.join(HERE, "onnx_model"))
+ONNX_POSITIVE_INDEX = int(os.environ.get("FAITHVIEW_ONNX_POSITIVE_INDEX", "1"))
 
 # --- Stage 4: semantic retrieval ------------------------------------------
 TOP_K = 10                       # retrieve top 5-10 nearest verses
 RETRIEVE_BATCH = 32              # query embedding batch size
 
-# --- Stage 5: hybrid re-ranking weights (must sum to 1.0) ------------------
+# --- Stage 5: reranking weights (must sum to 1.0) -------------------------
+# The ranking of retrieved Bible verse candidates uses ONLY the current
+# sentence's evidence: semantic similarity to the retrieved verse (80%)
+# and lexical keyword overlap (20%).  Previous sermon detections, running
+# context, and Stage 3's quote probability must NOT influence which verse
+# wins -- the current sentence alone determines the best match.
 @dataclass(frozen=True)
 class RerankWeights:
-    semantic: float = 0.45       # cosine similarity from FAISS
-    lexical: float = 0.20        # keyword / token overlap
-    context: float = 0.15        # sermon context match (running tracker)
-    history: float = 0.10        # match against previously accepted verses
-    quote_prob: float = 0.10     # quote-detection probability
+    semantic: float = 0.80       # cosine similarity from FAISS retrieval
+    lexical: float = 0.20        # keyword / token overlap with the query
+    context: float = 0.00        # DISABLED: sermon running context must not influence ranking
+    history: float = 0.00        # DISABLED: previously matched verses must not influence ranking
+    quote_prob: float = 0.00     # DISABLED: Stage 3 score must not influence Stage 5 ranking
 
 RERANK_WEIGHTS = RerankWeights()
 CROSS_ENCODER_TOPN = 10          # re-score only this many candidates
@@ -85,7 +102,7 @@ BAND_AUTOPILOT = "autopilot-eligible"   # >= AUTOPILOT_THRESHOLD
 BAND_REVIEW = "review queue"            # >= REVIEW_THRESHOLD .. < AUTOPILOT_THRESHOLD
 BAND_IGNORED = "ignored"                # < REVIEW_THRESHOLD
 AUTOPILOT_THRESHOLD = 0.60
-REVIEW_THRESHOLD = 0.60                 # was 0.80; lowered to surface more live detections
+REVIEW_THRESHOLD = 0.40                 # was 0.80; lowered to surface more live detections
 
 # --- Stage 2: sentence buffering ------------------------------------------
 BUFFER_NEXT_WORDS = 12           # lookahead words merged into the current window

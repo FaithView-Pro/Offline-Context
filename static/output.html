@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FaithView Pro — Output</title>
+<style>
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  html, body{
+    height:100%;
+    overflow:hidden;
+    background:#000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Hide cursor after 2s of inactivity on projector */
+  body.hide-cursor, body.hide-cursor *{ cursor:none !important; }
+
+  /* ---------- Presentation stage ---------- */
+  #stage{
+    position:fixed; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center;
+    padding:7vmin 9vmin;
+    background: radial-gradient(circle at 50% 30%, #64a3f5 0%, #2560d0 55%, #0b1e45 100%);
+    opacity:0;
+    transition: opacity .45s ease;
+  }
+  #stage.live{ opacity:1; }
+
+  #verse-text{
+    color:#fff;
+    font-weight:700;
+    line-height:1.38;
+    font-size:5.2vmin;
+    max-width:88vmin;
+    text-shadow: 0 2px 14px rgba(11,30,69,.4);
+  }
+  #verse-ref{
+    margin-top:4.5vmin;
+    color:#c9dfff;
+    font-weight:600;
+    font-size:2.6vmin;
+    letter-spacing:.1em;
+  }
+
+  /* ---------- Connection status dot ---------- */
+  #status{
+    position:fixed; top:16px; right:16px; z-index:20;
+    width:10px; height:10px; border-radius:50%;
+    background:#dc2626;
+    transition: opacity .5s ease;
+  }
+  #status.live{ background:#16a34a; opacity:0; }
+
+  /* ---------- Hint banner ---------- */
+  #hint{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:20;
+    background: rgba(18,35,58,.88);
+    color:#fff; font-size:13px; font-weight:600;
+    padding:9px 18px; border-radius:999px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.35);
+    transition: opacity .6s ease;
+    white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="verse-text"></div>
+  <div id="verse-ref"></div>
+</div>
+<div id="status" title="disconnected"></div>
+<div id="hint">Drag this window to your projector screen, then press <b>F</b> or <b>double-click</b> for fullscreen</div>
+
+<script>
+const WS_URL = (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/ws";
+
+const stage = document.getElementById("stage");
+const txt = document.getElementById("verse-text");
+const ref = document.getElementById("verse-ref");
+const statusEl = document.getElementById("status");
+const hint = document.getElementById("hint");
+
+// Shrink-to-fit: long verses always stay fully on screen
+function fit(){
+  let size = 5.2;
+  txt.style.fontSize = size + "vmin";
+  while (size > 1.6 && stage.scrollHeight > window.innerHeight){
+    size -= 0.2;
+    txt.style.fontSize = size + "vmin";
+  }
+}
+window.addEventListener("resize", fit);
+
+function showSlide(text, reference){
+  txt.textContent = text || "";
+  ref.textContent = reference || "";
+  stage.classList.add("live");
+  fit();
+}
+function clearSlide(){
+  stage.classList.remove("live");
+}
+
+function connect(){
+  const ws = new WebSocket(WS_URL);
+  ws.onopen = () => statusEl.classList.add("live");
+  ws.onclose = () => { statusEl.classList.remove("live"); setTimeout(connect, 2000); };
+  ws.onerror = () => ws.close();
+  ws.onmessage = (ev) => {
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    if (m.type === "display_update"){
+      if (m.clear){
+        clearSlide();
+      } else {
+        // If a full theme payload is present, render elements
+        if (m.theme && typeof m.theme === 'object'){
+          renderTheme(m.theme);
+        } else {
+          const r = (m.reference || "").toUpperCase();
+          const t = m.translation ? " (" + m.translation + ")" : "";
+          showSlide(m.text, r + t);
+        }
+      }
+    }
+  };
+}
+connect();
+
+function renderTheme(theme){
+  try{
+    // Reset stage inline styles
+    stage.style.position = 'fixed';
+    stage.style.inset = '0';
+    stage.style.display = 'flex';
+    stage.style.flexDirection = 'column';
+    stage.style.alignItems = 'center';
+    stage.style.justifyContent = 'center';
+    stage.style.textAlign = 'center';
+    stage.style.padding = '7vmin 9vmin';
+    stage.style.transition = 'opacity .45s ease, background .3s ease';
+    stage.style.background = '';
+    stage.style.backgroundImage = '';
+
+    // ---- Background ----
+    // Settings format: theme.canvas = { bgType, bgColor, bgImage, bgFit, bgOpacity }
+    // Standalone format: theme.background = { color, image }
+    const canvasCfg = theme.canvas;
+    const bgObj = theme.background;
+    if (canvasCfg){
+      if (canvasCfg.bgType === 'image' && canvasCfg.bgImage){
+        stage.style.backgroundImage = 'linear-gradient(rgba(0,0,0,0.15),rgba(0,0,0,0.25)),url("' + canvasCfg.bgImage + '")';
+        stage.style.backgroundSize = canvasCfg.bgFit || 'cover';
+      } else {
+        stage.style.background = canvasCfg.bgColor || '#000';
+      }
+    } else if (bgObj){
+      if (bgObj.image && bgObj.image !== 'none' && !bgObj.image.startsWith('none')){
+        stage.style.backgroundImage = bgObj.image;
+        stage.style.backgroundSize = 'cover';
+      } else if (bgObj.color){
+        stage.style.background = bgObj.color;
+      }
+    }
+
+    // ---- Elements ----
+    // Remove old theme elements
+    stage.querySelectorAll('.theme-el').forEach(e => e.remove());
+    txt.textContent = '';
+    ref.textContent = '';
+    txt.style.display = 'none';
+    ref.style.display = 'none';
+
+    let hasRendered = false;
+
+    if (Array.isArray(theme.elements) && theme.elements.length){
+      for (const el of theme.elements){
+        if (!el || !el.type) continue;
+
+        const div = document.createElement('div');
+        div.className = 'theme-el';
+
+        if (el.style){
+          // ---- Standalone format: element has raw CSS style string ----
+          div.style.cssText = el.style;
+          div.style.position = 'absolute';
+          div.style.display = 'flex';
+          div.style.alignItems = 'center';
+          div.style.justifyContent = el.style.includes('text-align: right') ? 'flex-end' :
+            el.style.includes('text-align: left') ? 'flex-start' : 'center';
+          div.style.overflow = 'hidden';
+          if (el.type === 'logo'){
+            // Extract background from style for logo
+            const bgMatch = el.style.match(/background:\s*([^;]+)/);
+            if (bgMatch){
+              div.style.background = bgMatch[1].trim();
+              div.style.borderRadius = '50%';
+              div.style.alignItems = 'center';
+              div.style.justifyContent = 'center';
+            }
+          }
+          div.textContent = el.text || '';
+        } else if (canvasCfg){
+          // ---- Settings format: structured x/y/w/h ----
+          const W = canvasCfg.width || 1920;
+          const H = canvasCfg.height || 1080;
+          div.style.position = 'absolute';
+          div.style.left = ((el.x || 0) / W * 100) + '%';
+          div.style.top = ((el.y || 0) / H * 100) + '%';
+          div.style.width = ((el.w || 80) / W * 100) + '%';
+          div.style.height = ((el.h || 10) / H * 100) + '%';
+          div.style.display = 'flex';
+          div.style.alignItems = 'center';
+          div.style.justifyContent = el.align === 'center' ? 'center' : el.align === 'right' ? 'flex-end' : 'flex-start';
+          div.style.textAlign = el.align || 'center';
+          div.style.fontFamily = el.font || 'Georgia, serif';
+          div.style.fontSize = ((el.size || 40) / H * 100) + 'vmin';
+          div.style.fontWeight = el.weight || 600;
+          div.style.color = el.color || '#fff';
+          div.style.opacity = (el.opacity != null ? el.opacity : 1);
+          div.style.letterSpacing = (el.letterSpacing || 0) + 'px';
+          div.style.lineHeight = el.lineHeight || 1.25;
+          div.style.overflow = 'hidden';
+          div.style.textShadow = '0 2px 14px rgba(0,0,0,0.4)';
+          if (el.type === 'logo' && el.logoBg){
+            div.style.background = el.logoBg;
+            div.style.borderRadius = '50%';
+            div.style.alignItems = 'center';
+            div.style.justifyContent = 'center';
+          }
+          div.textContent = el.text || '';
+        } else {
+          // Fallback: no canvas config, no inline style - use defaults
+          div.style.position = 'absolute';
+          div.style.inset = '10% 5%';
+          div.style.display = 'flex';
+          div.style.alignItems = 'center';
+          div.style.justifyContent = 'center';
+          div.style.textAlign = 'center';
+          div.style.color = '#fff';
+          div.style.fontWeight = '600';
+          div.style.fontSize = '4vmin';
+          div.textContent = el.text || '';
+        }
+
+        stage.appendChild(div);
+        hasRendered = true;
+
+        // Keep verse/ref references for quick access
+        if (el.type === 'verse' && el.text){ txt.textContent = el.text; }
+        if (el.type === 'ref' && el.text){ ref.textContent = el.text; }
+      }
+    }
+
+    if (!hasRendered){
+      // No elements - fallback to plain text
+      txt.style.display = '';
+      ref.style.display = '';
+      txt.textContent = theme.text || '';
+      ref.textContent = theme.reference || '';
+    }
+
+    stage.classList.add("live");
+  }catch(e){
+    showSlide(theme.text||'', (theme.reference||'') + (theme.translation?(' ('+theme.translation+')'):'') );
+  }
+}
+
+// Fullscreen on double-click or F key
+function toggleFullscreen(){
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+}
+document.addEventListener("dblclick", toggleFullscreen);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "f" || e.key === "F") toggleFullscreen();
+});
+
+// Auto-hide cursor after 2 seconds of no mouse movement (projector-friendly)
+let _cursorTimer;
+function showCursor(){
+  document.body.classList.remove("hide-cursor");
+  clearTimeout(_cursorTimer);
+  _cursorTimer = setTimeout(() => {
+    document.body.classList.add("hide-cursor");
+  }, 2000);
+}
+document.addEventListener("mousemove", showCursor);
+showCursor();
+
+// Fade hint away
+setTimeout(() => { hint.style.opacity = "0"; }, 5000);
+</script>
+</body>
+</html>

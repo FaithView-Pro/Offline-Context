@@ -61,6 +61,8 @@ class DeepgramSource(TranscriptionSource):
         self._recent_interims: deque = deque(maxlen=6)
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        # Active utterance tracking: interims update in-place, finals commit.
+        self._active_utterance: Optional[dict] = None  # {"start": float, "text": str, "words": list}
 
     @property
     def name(self) -> str:
@@ -164,37 +166,50 @@ class DeepgramSource(TranscriptionSource):
                 except Exception:
                     break
 
-        # ---- main async: connect, start sender, process results ----
-        async def _main():
+        MAX_RETRIES = 5
+        BASE_DELAY = 2  # seconds
+
+        async def _connect_once():
             import websockets
 
-            print(f"[deepgram] connecting to Deepgram {self.model} (key={masked})")
-            try:
-                async with websockets.connect(
-                    url,
-                    additional_headers={"Authorization": f"Token {key}"},
-                    ping_interval=5,
-                    close_timeout=2,
-                    open_timeout=10,
-                ) as ws:
-                    print(f"[deepgram] connected to Deepgram, streaming audio")
-                    sender = asyncio.ensure_future(_sender(ws))
-                    msg_count = 0
+            async with websockets.connect(
+                url,
+                additional_headers={"Authorization": f"Token {key}"},
+                ping_interval=5,
+                close_timeout=2,
+                open_timeout=10,
+            ) as ws:
+                print(f"[deepgram] connected to Deepgram, streaming audio")
+                sender = asyncio.ensure_future(_sender(ws))
+                msg_count = 0
+                try:
+                    async for raw_msg in ws:
+                        if self._stop.is_set():
+                            break
+                        self._on_deepgram_message(raw_msg)
+                        msg_count += 1
+                finally:
+                    sender.cancel()
                     try:
-                        async for raw_msg in ws:
-                            if self._stop.is_set():
-                                break
-                            self._on_deepgram_message(raw_msg)
-                            msg_count += 1
-                    finally:
-                        sender.cancel()
-                        try:
-                            await sender
-                        except asyncio.CancelledError:
-                            pass
-                    print(f"[deepgram] processed {msg_count} messages from Deepgram")
-            except Exception as exc:
-                print(f"[deepgram] WebSocket error: {exc}")
+                        await sender
+                    except asyncio.CancelledError:
+                        pass
+                print(f"[deepgram] processed {msg_count} messages from Deepgram")
+
+        async def _main():
+            for attempt in range(1, MAX_RETRIES + 1):
+                if self._stop.is_set():
+                    break
+                print(f"[deepgram] connecting to Deepgram {self.model} (key={masked}) [attempt {attempt}/{MAX_RETRIES}]")
+                try:
+                    await _connect_once()
+                    break  # normal disconnect — no retry needed
+                except Exception as exc:
+                    print(f"[deepgram] WebSocket error: {exc}")
+                    if attempt < MAX_RETRIES:
+                        delay = min(BASE_DELAY * (2 ** (attempt - 1)), 30)
+                        print(f"[deepgram] reconnecting in {delay}s ...")
+                        await asyncio.sleep(delay)
 
         try:
             loop.run_until_complete(_main())
@@ -230,6 +245,10 @@ class DeepgramSource(TranscriptionSource):
                 return
 
             is_final = msg.get("is_final", True)
+            # speech_final: True when the speaker has stopped talking for this
+            # utterance.  Deepgram sends multiple is_final=True results as the
+            # transcript is refined; speech_final marks the true end.
+            speech_final = alt.get("speech_final", False) or msg.get("speech_final", False)
 
             words = []
             for w in alt.get("words", []):
@@ -249,6 +268,26 @@ class DeepgramSource(TranscriptionSource):
             seg = Segment(transcript, start_time, end_time, words)
 
             if is_final:
+                # Final result: commit the active utterance and deliver it.
+                # Deepgram may send multiple finals for the same utterance as
+                # the transcript is refined — only commit on speech_final or
+                # when the start time changes (new utterance).
+                if self._active_utterance is not None:
+                    active_start = self._active_utterance["start"]
+                    # Same utterance, refined transcript — update in place
+                    if abs(active_start - start_time) < 0.5:
+                        self._active_utterance["text"] = transcript
+                        self._active_utterance["words"] = words
+                        self._active_utterance["end"] = end_time
+                        # Only deliver on speech_final (true utterance boundary)
+                        if not speech_final:
+                            return
+                    # Different utterance — commit the old one first
+                    else:
+                        self._commit_active_utterance()
+
+                # Build and deliver the final segment
+                self._active_utterance = None
                 cb = self._on_segment
                 if cb is not None:
                     try:
@@ -256,17 +295,63 @@ class DeepgramSource(TranscriptionSource):
                     except Exception as exc:
                         print(f"[deepgram] on_segment callback error: {exc}")
             else:
+                # Interim result: update the active utterance in place.
+                if self._active_utterance is not None:
+                    active_start = self._active_utterance["start"]
+                    # Same utterance — replace text (progressive refinement)
+                    if abs(active_start - start_time) < 0.5:
+                        self._active_utterance["text"] = transcript
+                        self._active_utterance["words"] = words
+                        self._active_utterance["end"] = end_time
+                    else:
+                        # Different utterance — commit old, start new
+                        self._commit_active_utterance()
+                        self._active_utterance = {
+                            "start": start_time, "text": transcript,
+                            "words": words, "end": end_time,
+                        }
+                else:
+                    # No active utterance — start tracking
+                    self._active_utterance = {
+                        "start": start_time, "text": transcript,
+                        "words": words, "end": end_time,
+                    }
+
+                # Deliver interim to callback (display + pipeline update)
                 cb = self._on_interim
-                if cb is not None and transcript not in self._recent_interims:
-                    self._recent_interims.append(transcript)
+                if cb is not None:
                     try:
                         cb(seg)
                     except Exception as exc:
                         print(f"[deepgram] on_interim callback error: {exc}")
+
+        elif msg_type == "UtteranceEnd":
+            # UtteranceEnd signals the speaker has stopped.  Commit whatever
+            # active utterance we have.
+            self._commit_active_utterance()
+
         elif msg_type == "Error":
             desc = msg.get("description", msg.get("message", str(msg)))
             print(f"[deepgram] server error: {desc}")
-        # silently ignore Metadata, UtteranceEnd, etc.
+
+    def _commit_active_utterance(self) -> None:
+        """Deliver the active utterance as a finalized segment and clear state."""
+        if self._active_utterance is None:
+            return
+        au = self._active_utterance
+        self._active_utterance = None
+        seg = Segment(
+            text=au["text"],
+            start_time=au["start"],
+            end_time=au.get("end", au["start"]),
+            words=au.get("words", []),
+        )
+        cb = self._on_segment
+        if cb is not None:
+            try:
+                cb(seg)
+            except Exception as exc:
+                print(f"[deepgram] on_segment callback error: {exc}")
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FaithView Pro — Settings</title>
+<style>
+  :root{
+    --bg-app: #ffffff;
+    --bg-panel: #ffffff;
+    --bg-panel-alt: #f1f5fb;
+    --border: #dde5ef;
+    --border-soft: #e9eff7;
+    --text-primary: #12233a;
+    --text-secondary: #54677d;
+    --text-muted: #8d9cae;
+    --accent-blue: #2563eb;
+    --accent-blue-dark: #1d4ed8;
+    --accent-blue-soft: #e9f1fe;
+    --accent-blue-border: #c3d7fa;
+    --accent-green: #16a34a;
+    --accent-yellow: #d97706;
+    --accent-red: #dc2626;
+    --radius: 10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg-app);
+    color:var(--text-primary);
+    display:flex;
+    height:100vh;
+    overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    font-size:13px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .toast{ position:fixed; bottom:16px; left:50%; transform:translateX(-50%); z-index:999;
+    background:#12233a; color:#fff; box-shadow:0 6px 20px rgba(18,35,58,.25);
+    padding:8px 14px; border-radius:8px; font-size:12px; opacity:0; transition:opacity .2s; }
+  .toast.show{ opacity:1; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:230px; flex-shrink:0;
+    background:var(--bg-panel);
+    border-right:1px solid var(--border);
+    display:flex; flex-direction:column; padding:20px 0;
+  }
+  .sidebar h1{ font-size:15px; font-weight:700; margin:0 20px 18px; letter-spacing:.2px; }
+  .nav-group{flex:1;}
+  .nav-item{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 20px; font-size:13.5px;
+    color:var(--text-secondary); cursor:pointer;
+    border-left:3px solid transparent; user-select:none;
+    transition:all .15s ease;
+  }
+  .nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.85;}
+  .nav-item:hover{color:var(--text-primary);background:var(--bg-panel-alt);}
+  .nav-item.active{
+    color:var(--accent-blue);
+    border-left-color:var(--accent-blue);
+    background:var(--accent-blue-soft);
+    font-weight:600;
+  }
+  .plan-box{
+    margin:0 14px; padding:12px 14px;
+    background:var(--bg-panel-alt);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+  }
+  .plan-box .plan-name{font-size:13px;font-weight:700;}
+  .plan-meta{font-size:11px;color:var(--text-muted);margin-top:6px;}
+
+  /* ---------- Main ---------- */
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:22px 32px;border-bottom:1px solid var(--border);
+    box-shadow:0 1px 3px rgba(18,35,58,.05);
+    flex-shrink:0;
+  }
+  .topbar h2{margin:0;font-size:18px;font-weight:700;}
+  .topbar .close{color:var(--text-muted);font-size:20px;cursor:pointer;border:none;background:none;}
+  .topbar .close:hover{color:var(--text-primary);}
+  .content{flex:1;overflow-y:auto;padding:28px 32px 60px;}
+  .content-inner{max-width:900px;}
+
+  .row{
+    display:flex;justify-content:space-between;align-items:center;
+    gap:24px;padding:20px 0;border-bottom:1px solid var(--border-soft);
+  }
+  .row:last-child{border-bottom:none;}
+  .row-label{max-width:380px;}
+  .row-label .title{font-size:14px;font-weight:600;margin-bottom:4px;}
+  .row-label .desc{font-size:12.5px;color:var(--text-secondary);line-height:1.5;}
+  .row-control{flex-shrink:0;display:flex;align-items:center;gap:10px;}
+
+  .section-label{
+    font-size:11px;font-weight:700;color:var(--text-muted);
+    letter-spacing:.6px;margin:34px 0 6px;
+  }
+  .section-label:first-child{margin-top:0;}
+
+  /* toggle */
+  .toggle{
+    width:42px;height:24px;border-radius:20px;background:#d5dfec;
+    position:relative;cursor:pointer;transition:background .15s;flex-shrink:0;
+    border:none;padding:0;
+  }
+  .toggle.on{background:var(--accent-blue);}
+  .toggle:disabled{opacity:.45;cursor:not-allowed;}
+  .toggle .knob{
+    position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+    background:#fff;transition:left .15s;box-shadow:0 1px 3px rgba(18,35,58,.3);
+  }
+  .toggle.on .knob{left:21px;}
+
+  /* pill */
+  .pill{
+    background:var(--bg-panel-alt);border:1px solid var(--border);color:var(--text-secondary);
+    font-size:11.5px;padding:6px 12px;border-radius:16px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  .pill-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+
+  select, input[type=text], input[type=email], input[type=password]{
+    background:var(--bg-panel-alt);border:1px solid var(--border);color:var(--text-primary);
+    padding:9px 12px;border-radius:8px;font-size:13px;outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  select:focus, input:focus{
+    border-color:var(--accent-blue);
+    box-shadow:0 0 0 3px rgba(37,99,235,.14);
+  }
+  input::placeholder{color:var(--text-muted);}
+  input:disabled, select:disabled{opacity:.55;cursor:not-allowed;}
+
+  .btn{
+    background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);
+    padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;
+    transition:all .15s ease;
+  }
+  .btn:hover{border-color:var(--accent-blue-border);color:var(--accent-blue-dark);background:var(--accent-blue-soft);}
+  .btn-accent{background:var(--accent-blue);border-color:var(--accent-blue);color:#fff;}
+  .btn-accent:hover{background:var(--accent-blue-dark);border-color:var(--accent-blue-dark);color:#fff;}
+  .btn-ghost{background:transparent;}
+  .btn-sm{padding:6px 12px;font-size:12px;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+
+  /* ---------- Panels ---------- */
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  /* ---------- Versions page ---------- */
+  .version-card{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 16px;background:var(--bg-panel);border:1px solid var(--border);
+    border-radius:var(--radius);margin-bottom:10px;
+  }
+  .version-info{display:flex;align-items:center;gap:14px;}
+  .version-badge{
+    width:38px;height:38px;border-radius:8px;background:var(--accent-blue-soft);
+    color:var(--accent-blue);font-weight:800;font-size:12px;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .version-name{font-size:13.5px;font-weight:600;}
+  .version-sub{font-size:11.5px;color:var(--text-muted);margin-top:2px;}
+  .status-tag{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:5px;letter-spacing:.3px;}
+  .status-downloaded{background:#e6f6ec;color:var(--accent-green);}
+  .status-active{background:var(--accent-blue-soft);color:var(--accent-blue);}
+  .version-actions{display:flex;align-items:center;gap:10px;}
+
+  .cmd-table{margin-top:10px;}
+  .cmd-row{
+    display:grid;grid-template-columns:1fr 160px 70px;gap:10px;align-items:center;
+    padding:10px 0;border-bottom:1px solid var(--border-soft);
+  }
+  .cmd-row:last-child{border-bottom:none;}
+  .cmd-row input{width:100%;}
+  .regex-note{
+    margin-top:14px;padding:12px 14px;background:var(--bg-panel-alt);
+    border:1px dashed var(--border);border-radius:8px;
+    font-size:12px;color:var(--text-secondary);line-height:1.6;
+  }
+  .regex-note code{
+    background:#fff;padding:1px 5px;border-radius:4px;color:var(--accent-blue-dark);
+    border:1px solid var(--border-soft);
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;
+  }
+
+  /* ---------- Streaming / NDI page ---------- */
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--text-muted);flex-shrink:0;}
+  .status-dot.live{background:var(--accent-green);box-shadow:0 0 0 3px rgba(22,163,74,.15);}
+  .status-dot.warn{background:var(--accent-yellow);box-shadow:0 0 0 3px rgba(217,119,6,.12);}
+  .status-dot.err{background:var(--accent-red);box-shadow:0 0 0 3px rgba(220,38,38,.12);}
+  .conn-banner{
+    display:flex;align-items:flex-start;gap:10px;padding:12px 14px;
+    background:var(--bg-panel-alt);border:1px solid var(--border);border-radius:8px;
+    font-size:12.5px;color:var(--text-secondary);margin-bottom:22px;line-height:1.5;
+  }
+  .conn-banner .status-dot{margin-top:5px;}
+  .conn-banner b{color:var(--text-primary);}
+  .output-option{
+    border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;
+    background:var(--bg-panel);
+  }
+  .output-option.disabled{opacity:.7;}
+  .output-option .opt-head{display:flex;justify-content:space-between;align-items:center;}
+  .opt-title{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  .opt-desc{font-size:12px;color:var(--text-secondary);margin-top:6px;line-height:1.5;max-width:560px;}
+  .opt-detail{margin-top:14px;padding-top:14px;border-top:1px solid var(--border-soft);display:none;}
+  .output-option.on .opt-detail{display:block;}
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px;}
+  .field label{display:block;font-size:11.5px;color:var(--text-muted);margin-bottom:6px;font-weight:600;}
+  .field select, .field input{width:100%;}
+  .howto-steps{margin:10px 0 0;padding-left:18px;font-size:12px;color:var(--text-secondary);line-height:1.9;}
+  .url-row{display:flex;gap:8px;margin-top:6px;}
+  .url-row input{flex:1;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;}
+
+  /* ---------- Account page ---------- */
+  .field-block{margin-bottom:18px;max-width:420px;}
+  .field-block label{display:block;font-size:11.5px;color:var(--text-muted);margin-bottom:6px;font-weight:600;}
+  .field-block input{width:100%;}
+  .field-block .with-btn{display:flex;gap:8px;}
+  .field-block .with-btn input{flex:1;}
+  .license-key{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.5px;}
+
+  /* ---------- Help page ---------- */
+  .help-card{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:16px;background:var(--bg-panel);border:1px solid var(--border);
+    border-radius:var(--radius);margin-bottom:10px;
+  }
+  .help-card .title{font-size:13.5px;font-weight:600;}
+  .help-card .desc{font-size:12px;color:var(--text-secondary);margin-top:4px;}
+  textarea{
+    width:100%;background:var(--bg-panel-alt);border:1px solid var(--border);
+    color:var(--text-primary);border-radius:8px;padding:10px 12px;font-size:13px;
+    font-family:inherit;resize:vertical;outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  textarea:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(37,99,235,.14);}
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:#c6d2e2;border-radius:8px;}
+  ::-webkit-scrollbar-thumb:hover{background:#a9bcd6;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  /* ========== THEME EDITOR ========== */
+  .content-inner.themes-active{ max-width:none; padding:0; height:100%; }
+  .content.themes-mode{ padding:0; overflow:hidden; }
+  .content.themes-mode + .toast{ display:none; }
+  .main.themes-main .topbar{ display:none; }
+
+  .te-app{
+    display:grid; grid-template-columns:56px 260px 1fr 300px;
+    grid-template-rows:50px 1fr; height:100%;
+    background:#0d0d12; color:#f2f0f7;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+  }
+  .te-top{
+    grid-column:1/-1; background:#17171f;
+    border-bottom:1px solid #333340;
+    display:flex; align-items:center; gap:12px; padding:0 16px;
+  }
+  .te-brand{ font-weight:700; font-size:13px; color:#8b6bff; white-space:nowrap; }
+  .te-brand i{ display:inline-block; width:8px; height:8px; border-radius:3px;
+    background:linear-gradient(135deg,#8b6bff,#e8a33d); margin-right:7px; }
+  .te-theme-name{
+    color:#9997a7; padding:5px 9px; border:1px solid transparent;
+    border-radius:6px; font-size:12px; background:transparent; cursor:text;
+  }
+  .te-theme-name:hover{ border-color:#333340; background:#20202a; color:#fff; }
+  .te-theme-name:focus{ outline:none; border-color:#8b6bff; background:#20202a; color:#fff; }
+  .te-spacer{ flex:1; }
+  .te-sync{ font-size:10px; color:#9997a7; background:#20202a; border:1px solid #333340;
+    padding:5px 9px; border-radius:16px; white-space:nowrap; }
+  .te-sync b{ color:#51d88a; }
+  .te-btn{
+    border:1px solid #333340; background:#20202a; color:#fff;
+    padding:6px 11px; border-radius:7px; font-size:11px; cursor:pointer;
+    font-weight:600; white-space:nowrap;
+  }
+  .te-btn:hover{ background:#292934; }
+  .te-btn.primary{ background:#8b6bff; border-color:#8b6bff; }
+  .te-btn.primary:hover{ background:#7a5be0; }
+
+  /* Rail */
+  .te-rail{
+    background:#17171f; border-right:1px solid #333340;
+    display:flex; flex-direction:column; align-items:center;
+    padding:8px 0; gap:2px; grid-row:2/4;
+  }
+  .te-rail button{
+    width:48px; height:48px; border:0; background:none; color:#9997a7;
+    border-radius:8px; font-size:9px; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:4px; cursor:pointer;
+  }
+  .te-rail button svg{ width:17px; height:17px; }
+  .te-rail button:hover,.te-rail button.active{ background:#292442; color:#8b6bff; }
+  .te-rail-sep{ height:1px; background:#333340; width:28px; margin:6px 0; }
+
+  /* Context panel */
+  .te-left{
+    background:#17171f; border-right:1px solid #333340;
+    overflow:auto; grid-row:2/4;
+  }
+  .te-lp{ display:none; }
+  .te-lp.active{ display:block; }
+  .te-head{ padding:14px; border-bottom:1px solid #333340; }
+  .te-head h3{ margin:0; font-size:14px; }
+  .te-head p{ margin:4px 0 0; color:#9997a7; font-size:11px; line-height:1.4; }
+  .te-section{ padding:12px 14px; border-bottom:1px solid #333340; }
+  .te-label{ font-size:10px; color:#727181; text-transform:uppercase; letter-spacing:.08em;
+    font-weight:700; margin-bottom:8px; }
+  .te-item{
+    padding:9px 10px; border:1px solid #333340; background:#20202a;
+    border-radius:7px; margin-bottom:6px; font-size:12px; cursor:pointer;
+  }
+  .te-item:hover{ border-color:#8b6bff; }
+  .te-theme-card{
+    display:flex; gap:8px; align-items:center; border:1px solid transparent;
+    padding:7px; border-radius:7px; cursor:pointer; font-size:12px;
+  }
+  .te-theme-card:hover,.te-theme-card.sel{ background:#292442; border-color:#8b6bff; }
+  .te-thumb{ width:44px; height:28px; border-radius:4px; flex-shrink:0; }
+  .te-theme-card small{ display:block; color:#9997a7; margin-top:2px; }
+
+  /* Canvas area */
+  .te-canvas-wrap{
+    background:#0a0a0e; display:flex; align-items:center; justify-content:center;
+    position:relative; overflow:auto; grid-row:2/4;
+    background-image:radial-gradient(#20202a 1px,transparent 1px);
+    background-size:20px 20px;
+  }
+  .te-canvas{
+    width:min(880px,calc(100% - 40px)); aspect-ratio:16/9;
+    position:relative; overflow:hidden; border-radius:4px;
+    background:#2b2470 center/cover; box-shadow:0 24px 60px #0008;
+  }
+  .te-element{
+    position:absolute; border:2px solid transparent; padding:4px 7px;
+    border-radius:4px; user-select:none; cursor:move; min-width:40px;
+  }
+  .te-element:hover{ border-color:#8b6bff66; }
+  .te-element.selected{ border-color:#8b6bff; box-shadow:0 0 0 3px #8b6bff22; }
+  .te-handle{ display:none; position:absolute; width:8px; height:8px;
+    background:#8b6bff; border:1px solid #fff; border-radius:2px; }
+  .te-element.selected .te-handle{ display:block; }
+  .te-handle.nw{ left:-6px; top:-6px; }
+  .te-handle.ne{ right:-6px; top:-6px; }
+  .te-handle.sw{ left:-6px; bottom:-6px; }
+  .te-handle.se{ right:-6px; bottom:-6px; cursor:nwse-resize; }
+  .te-el-verse{ left:8%; top:20%; width:84%; text-align:center;
+    font:600 clamp(20px,3.5vw,40px)/1.25 Georgia,serif; color:#fff; }
+  .te-el-ref{ left:12%; top:62%; width:76%; text-align:center;
+    font-size:16px; font-weight:700; letter-spacing:.06em; color:#f1d9a3;
+    text-transform:uppercase; }
+  .te-el-copy{ left:20px; bottom:14px; font-size:11px; color:#fffc; }
+  .te-el-logo{ right:20px; top:18px; width:56px; height:56px; padding:0; }
+  .te-el-logo .te-logo-mark{
+    width:100%; height:100%; display:grid; place-items:center;
+    border-radius:10px; background:#e8a33d; color:#1a1200;
+    font-weight:800; font-size:20px;
+  }
+  .te-toolbar{
+    position:absolute; top:10px; left:50%; transform:translateX(-50%);
+    background:#20202a; border:1px solid #333340; padding:3px;
+    border-radius:8px; display:flex; gap:2px; z-index:5;
+  }
+  .te-toolbar button{
+    width:28px; height:26px; border:0; background:none; color:#9997a7;
+    border-radius:5px; cursor:pointer; font-size:12px;
+  }
+  .te-toolbar button:hover{ background:#292934; color:#fff; }
+  .te-zoom{
+    position:absolute; right:12px; bottom:10px; background:#20202a;
+    border:1px solid #333340; border-radius:6px; padding:4px 8px;
+    color:#9997a7; font-size:10px;
+  }
+
+  /* Right panel */
+  .te-right{
+    background:#17171f; border-left:1px solid #333340;
+    overflow:auto; grid-row:2/4;
+  }
+  .te-rp{ display:none; }
+  .te-rp.active{ display:block; }
+  .te-rphead{
+    padding:12px 14px; border-bottom:1px solid #333340;
+    display:flex; gap:8px; align-items:center;
+  }
+  .te-badge{
+    width:26px; height:26px; border-radius:6px; background:#8b6bff24;
+    color:#8b6bff; display:grid; place-items:center; font-size:12px;
+    flex-shrink:0;
+  }
+  .te-rphead h3{ font-size:12px; margin:0; }
+  .te-rphead p{ font-size:10px; color:#9997a7; margin:2px 0 0; }
+  .te-row{ display:flex; align-items:center; justify-content:space-between;
+    gap:8px; margin:8px 0; }
+  .te-field{ font-size:11px; color:#9997a7; }
+  .te-section select,.te-section input[type=text],.te-section textarea{
+    width:100%; background:#20202a; color:#fff; border:1px solid #333340;
+    border-radius:6px; padding:7px 9px; font-size:12px;
+  }
+  .te-section textarea{ min-height:60px; resize:vertical; }
+  .te-section select:focus,.te-section input:focus,.te-section textarea:focus{
+    outline:none; border-color:#8b6bff;
+  }
+  .te-swatches{ display:flex; gap:6px; flex-wrap:wrap; }
+  .te-swatch{
+    width:22px; height:22px; border-radius:6px; border:1px solid #333340;
+    cursor:pointer;
+  }
+  .te-swatch.on{ outline:2px solid #8b6bff; outline-offset:2px; }
+  .te-seg{ display:flex; background:#20202a; border:1px solid #333340;
+    border-radius:6px; padding:2px; }
+  .te-seg button{ flex:1; border:0; background:none; color:#9997a7;
+    padding:5px; font-size:11px; cursor:pointer; border-radius:4px; }
+  .te-seg button.on{ background:#292934; color:#8b6bff; }
+  .te-range{ width:100%; accent-color:#8b6bff; }
+  .te-val{ font:10px monospace; color:#8b6bff; background:#8b6bff22;
+    padding:2px 5px; border-radius:3px; }
+  .te-step{ display:flex; background:#20202a; border:1px solid #333340;
+    border-radius:6px; overflow:hidden; }
+  .te-step button{ border:0; background:none; color:#9997a7; width:26px;
+    cursor:pointer; font-size:13px; }
+  .te-step input{ width:38px; text-align:center; border:0; background:none;
+    color:#fff; font-size:12px; }
+  .te-step input:focus{ outline:none; }
+
+  /* Media grid */
+  .te-media{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .te-media div{ aspect-ratio:1; border-radius:6px; overflow:hidden;
+    border:1px solid #333340; position:relative; cursor:pointer; }
+  .te-media img{ width:100%; height:100%; object-fit:cover; }
+  .te-media span{ position:absolute; bottom:0; left:0; right:0; background:#0009;
+    font-size:7px; padding:2px; text-align:center; }
+  .te-media .te-add{
+    display:grid; place-items:center; color:#9997a7; font-size:9px;
+    border-style:dashed!important; cursor:pointer;
+  }
+  .te-media .te-add:hover{ color:#8b6bff; border-color:#8b6bff; }
+
+  /* Toggle */
+  .te-toggle{
+    width:34px; height:18px; border-radius:16px; background:#292934;
+    border:1px solid #333340; padding:2px; cursor:pointer; flex-shrink:0;
+  }
+  .te-toggle i{ display:block; width:12px; height:12px; border-radius:50%;
+    background:#fff; transition:.15s; }
+  .te-toggle.on{ background:#8b6bff; }
+  .te-toggle.on i{ margin-left:14px; }
+
+  /* Alert preview */
+  .te-alert-preview{
+    height:90px; border-radius:7px;
+    background:linear-gradient(135deg,#2b2470,#1a1260);
+    position:relative; overflow:hidden; margin-bottom:8px;
+  }
+  .te-ticker{
+    position:absolute; bottom:8px; width:100%; background:#8b6bffdd;
+    color:#fff; white-space:nowrap; padding:5px 0; font-size:12px; font-weight:700;
+  }
+  .te-ticker span{ display:inline-block; padding-left:100%;
+    animation:te-marq 7s linear infinite; }
+  @keyframes te-marq{ to{ transform:translateX(-100%); } }
+
+  /* Hidden file input */
+  .te-hidden{ display:none!important; }
+</style>
+</head>
+<body>
+
+<!-- ================= SIDEBAR ================= -->
+<div class="sidebar">
+  <h1>Settings</h1>
+  <div class="nav-group">
+
+    <div class="nav-item" data-panel="versions">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h11a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2V4z"/><path d="M19 4v14"/></svg>
+      Bible Versions
+    </div>
+    <div class="nav-item" data-panel="streaming">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M22 8.5 16 12l6 3.5v-7z"/></svg>
+      Streaming / NDI
+    </div>
+    <div class="nav-item" data-panel="account">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+      Account
+    </div>
+    <div class="nav-item" data-panel="help">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><path d="M12 17h.01"/></svg>
+      Help &amp; Feedback
+    </div>
+  </div>
+  <div class="plan-box">
+    <div class="plan-name">FaithView Pro</div>
+    <div class="plan-meta">Local build · offline engine</div>
+  </div>
+</div>
+
+<!-- ================= MAIN ================= -->
+<div class="main">
+  <div class="topbar">
+    <h2 id="page-title">Theme Manager</h2>
+    <button class="close" id="close-btn" title="Close settings">&times;</button>
+  </div>
+
+  <div class="content"><div class="content-inner" id="content-inner">
+
+    <!-- ========== THEME MANAGER ========== -->
+    <div class="panel" id="panel-themes">
+      <div class="te-app">
+        <!-- Top bar -->
+        <div class="te-top">
+          <div class="te-brand"><i></i>FaithView Pro</div>
+          <input class="te-theme-name" id="te-theme-name" value="Christ's Heart Main" spellcheck="false">
+          <div class="te-spacer"></div>
+          <div class="te-sync" id="te-sync"><b>&#9679;</b> Saved locally</div>
+          <button class="te-btn" id="te-export-btn">Export</button>
+          <button class="te-btn primary" id="te-save-btn">Save theme</button>
+        </div>
+
+        <!-- Left rail -->
+        <nav class="te-rail">
+          <button class="active" data-left="themes" onclick="teLeftTab(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            <span>Themes</span>
+          </button>
+          <button data-left="text" onclick="teLeftTab(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+            <span>Text</span>
+          </button>
+          <button data-left="scripture" onclick="teLeftTab(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h11a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2V4z"/><path d="M19 4v14"/></svg>
+            <span>Scripture</span>
+          </button>
+          <button data-left="background" onclick="teLeftTab(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><path d="m21 15-5-5L5 21"/></svg>
+            <span>BG</span>
+          </button>
+          <button data-left="uploads" onclick="teLeftTab(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Uploads</span>
+          </button>
+          <div class="te-rail-sep"></div>
+          <button data-left="alerts" onclick="teLeftTab(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span>Alerts</span>
+          </button>
+          <button data-left="brand" onclick="teLeftTab(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            <span>Brand</span>
+          </button>
+        </nav>
+
+        <!-- Context panels -->
+        <aside class="te-left">
+          <div id="tel-themes" class="te-lp active">
+            <div class="te-head"><h3>Themes</h3><p>Saved locally on this device.</p></div>
+            <div class="te-section"><button class="te-btn primary" style="width:100%" id="te-new-theme-btn">+ New theme</button></div>
+            <div class="te-section" id="te-theme-list"></div>
+            <div class="te-section">
+              <div class="te-label">Storage</div>
+              <div class="te-item" id="te-import-item">Import theme JSON</div>
+              <input type="file" id="te-import-input" accept=".json" class="te-hidden">
+            </div>
+          </div>
+
+          <div id="tel-text" class="te-lp">
+            <div class="te-head"><h3>Text &amp; elements</h3><p>Add movable elements to the slide.</p></div>
+            <div class="te-section">
+              <div class="te-label">Elements</div>
+              <div class="te-item" onclick="teAddElement('text')">T Heading text</div>
+              <div class="te-item" onclick="teAddElement('text')">T Body text</div>
+              <div class="te-item" onclick="teAddElement('logo')">Logo image</div>
+              <div class="te-item" onclick="teAddElement('copy')">Church name / copyright</div>
+            </div>
+          </div>
+
+          <div id="tel-scripture" class="te-lp">
+            <div class="te-head"><h3>Scripture</h3><p>Verse and reference are independent movable boxes.</p></div>
+            <div class="te-section">
+              <div class="te-label">Find scripture</div>
+              <input type="text" id="te-verse-search" placeholder="Genesis 1:1">
+              <select id="te-verse-trans" style="margin-top:6px"><option>NKJV</option><option>KJV</option><option>ESV</option><option>NIV</option><option>NLT</option></select>
+            </div>
+            <div class="te-section">
+              <div class="te-item" onclick="teAddElement('verse')">Verse text box</div>
+              <div class="te-item" onclick="teAddElement('ref')">Reference box</div>
+            </div>
+          </div>
+
+          <div id="tel-background" class="te-lp">
+            <div class="te-head"><h3>Background</h3><p>Solid color, image or video.</p></div>
+            <div class="te-section">
+              <div class="te-label">Colors</div>
+              <div class="te-swatches" id="te-bg-swatches">
+                <button class="te-swatch" style="background:#2b2470" onclick="teSetBgColor('#2b2470')"></button>
+                <button class="te-swatch" style="background:#0f3d2e" onclick="teSetBgColor('#0f3d2e')"></button>
+                <button class="te-swatch" style="background:#3a1414" onclick="teSetBgColor('#3a1414')"></button>
+                <button class="te-swatch" style="background:#111114" onclick="teSetBgColor('#111114')"></button>
+                <button class="te-swatch" style="background:#e8a33d" onclick="teSetBgColor('#e8a33d')"></button>
+              </div>
+            </div>
+            <div class="te-section">
+              <div class="te-label">HEX</div>
+              <input type="text" id="te-bg-hex" value="#2B2470" oninput="teSetBgColor(this.value)">
+            </div>
+            <div class="te-section">
+              <div class="te-label">Image</div>
+              <div class="te-media" id="te-bg-images"></div>
+              <button class="te-btn" style="width:100%;margin-top:8px" onclick="document.getElementById('te-bg-file').click()">Upload image</button>
+              <input type="file" id="te-bg-file" accept="image/*" class="te-hidden" onchange="teHandleBgUpload(this)">
+            </div>
+            <div class="te-section" id="te-bg-image-opts" style="display:none">
+              <div class="te-label">Fit</div>
+              <select id="te-bg-fit"><option value="cover">Cover / crop</option><option value="contain">Contain</option><option value="stretch">Stretch</option></select>
+              <div class="te-row"><span class="te-field">Scale</span><span class="te-val" id="te-bg-scale-val">100%</span></div>
+              <input class="te-range" type="range" min="50" max="200" value="100" id="te-bg-scale" oninput="teUpdateBgScale()">
+              <div class="te-row"><span class="te-field">Opacity</span><span class="te-val" id="te-bg-opacity-val">100%</span></div>
+              <input class="te-range" type="range" min="0" max="100" value="100" id="te-bg-opacity" oninput="teUpdateBgOpacity()">
+            </div>
+          </div>
+
+          <div id="tel-uploads" class="te-lp">
+            <div class="te-head"><h3>Uploads</h3><p>Media for logos and backgrounds.</p></div>
+            <div class="te-section">
+              <button class="te-btn primary" style="width:100%" onclick="document.getElementById('te-upload-file').click()">+ Upload from device</button>
+              <input type="file" id="te-upload-file" accept="image/*,video/*" class="te-hidden" onchange="teHandleUpload(this)">
+            </div>
+            <div class="te-section"><div class="te-media" id="te-media-grid"></div></div>
+          </div>
+
+          <div id="tel-alerts" class="te-lp">
+            <div class="te-head"><h3>Nursery alerts</h3><p>Scrolling TV-style lower-third messages.</p></div>
+            <div class="te-section"><div class="te-label">Preview</div>
+              <div class="te-alert-preview"><div class="te-ticker"><span id="te-alert-ticker-text">Parents of child #114, please check the nursery&nbsp;&nbsp;&nbsp;&nbsp;Parents of child #114, please check the nursery</span></div></div>
+            </div>
+            <div class="te-section"><div class="te-label">Message</div><textarea id="te-alert-text" oninput="teUpdateAlertPreview()">Parents of child #114, please check the nursery</textarea></div>
+            <div class="te-section"><div class="te-label">Scroll speed</div>
+              <div class="te-row"><span class="te-field">Speed</span><span class="te-val" id="te-alert-speed-val">Medium</span></div>
+              <input class="te-range" type="range" min="1" max="10" value="5" id="te-alert-speed" oninput="teUpdateAlertSpeed()">
+            </div>
+            <div class="te-section"><div class="te-label">Typography</div>
+              <select id="te-alert-font"><option>Inter</option><option>Montserrat</option><option>Poppins</option><option>Roboto</option><option>Georgia</option></select>
+              <div class="te-row"><span class="te-field">Size</span><div class="te-step"><button onclick="teStepAlertFont(-1)">&minus;</button><input id="te-alert-font-size" value="14"><button onclick="teStepAlertFont(1)">+</button></div></div>
+              <div class="te-row"><span class="te-field">Weight</span><span class="te-val" id="te-alert-weight-val">700</span></div>
+              <input class="te-range" type="range" min="100" max="900" step="100" value="700" id="te-alert-weight" oninput="document.getElementById('te-alert-weight-val').textContent=this.value">
+            </div>
+            <div class="te-section"><div class="te-label">Colors</div>
+              <div class="te-row"><span class="te-field">Text</span><input type="text" id="te-alert-text-color" value="#FFFFFF" style="width:90px"></div>
+              <div class="te-row"><span class="te-field">Background</span><input type="text" id="te-alert-bg-color" value="#8B6BFF" style="width:90px"></div>
+            </div>
+          </div>
+
+          <div id="tel-brand" class="te-lp">
+            <div class="te-head"><h3>Brand kit</h3><p>Reusable church identity for every theme.</p></div>
+            <div class="te-section"><div class="te-label">Church name</div><input type="text" id="te-brand-name" value="Christ's Heart Church"></div>
+            <div class="te-section"><div class="te-label">Brand colors</div>
+              <div class="te-swatches">
+                <button class="te-swatch" style="background:#8b6bff"></button>
+                <button class="te-swatch" style="background:#e8a33d"></button>
+                <button class="te-swatch" style="background:#fff"></button>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Canvas -->
+        <main class="te-canvas-wrap">
+          <div id="te-canvas" class="te-canvas">
+            <div class="te-toolbar">
+              <button onclick="teAlignEl('left')" title="Align left">&#8801;</button>
+              <button onclick="teAlignEl('center')" title="Center">&#9783;</button>
+              <button onclick="teAlignEl('right')" title="Align right">&#8801;</button>
+              <button onclick="teDuplicateSelected()" title="Duplicate">&#10697;</button>
+              <button onclick="teDeleteSelected()" title="Delete">&#9003;</button>
+            </div>
+            <div id="te-el-logo" class="te-element te-el-logo" data-type="logo" onclick="teSelectElement(this,event)">
+              <div class="te-logo-mark">CH</div>
+              <span class="te-handle nw"></span><span class="te-handle ne"></span>
+              <span class="te-handle sw"></span><span class="te-handle se"></span>
+            </div>
+            <div id="te-el-verse" class="te-element te-el-verse" data-type="verse" onclick="teSelectElement(this,event)">
+              In the beginning God created the heaven and the earth
+              <span class="te-handle nw"></span><span class="te-handle ne"></span>
+              <span class="te-handle sw"></span><span class="te-handle se"></span>
+            </div>
+            <div id="te-el-ref" class="te-element te-el-ref" data-type="ref" onclick="teSelectElement(this,event)">
+              Genesis 1:1 (NKJV)
+              <span class="te-handle nw"></span><span class="te-handle ne"></span>
+              <span class="te-handle sw"></span><span class="te-handle se"></span>
+            </div>
+            <div id="te-el-copy" class="te-element te-el-copy" data-type="copy" onclick="teSelectElement(this,event)">
+              Christ's Heart Church
+              <span class="te-handle nw"></span><span class="te-handle ne"></span>
+              <span class="te-handle sw"></span><span class="te-handle se"></span>
+            </div>
+            <div class="te-zoom">1920x1080</div>
+          </div>
+        </main>
+
+        <!-- Right panels -->
+        <aside class="te-right">
+          <div id="ter-empty" class="te-rp active">
+            <div class="te-head"><h3>Theme editor</h3><p>Select verse, reference, copyright, logo or background to edit.</p></div>
+          </div>
+
+          <div id="ter-text" class="te-rp">
+            <div class="te-rphead"><div class="te-badge">T</div><div><h3 id="ter-text-title">Verse text</h3><p>Selected element</p></div></div>
+            <div class="te-section"><div class="te-label">Color</div>
+              <div class="te-swatches">
+                <button class="te-swatch" style="background:#fff" onclick="teSetTextColor('#fff')"></button>
+                <button class="te-swatch" style="background:#f1d9a3" onclick="teSetTextColor('#f1d9a3')"></button>
+                <button class="te-swatch" style="background:#8b6bff" onclick="teSetTextColor('#8b6bff')"></button>
+                <button class="te-swatch" style="background:#111" onclick="teSetTextColor('#111')"></button>
+              </div>
+              <input type="text" id="ter-hex" value="#FFFFFF" oninput="teSetTextColor(this.value)" style="margin-top:7px">
+            </div>
+            <div class="te-section"><div class="te-label">Alignment</div>
+              <div class="te-seg">
+                <button onclick="teSetAlign('left')">&#8592;</button>
+                <button class="on" onclick="teSetAlign('center')">&#8596;</button>
+                <button onclick="teSetAlign('right')">&#8594;</button>
+              </div>
+            </div>
+            <div class="te-section"><div class="te-label">Typography</div>
+              <select id="ter-font-family" onchange="teApplyTypography()">
+                <option>Georgia</option><option>Inter</option><option>Arial</option>
+                <option>Helvetica</option><option>Montserrat</option><option>Poppins</option>
+                <option>Roboto</option><option>Open Sans</option><option>Playfair Display</option>
+                <option>Merriweather</option><option>Lora</option><option>Source Serif 4</option>
+                <option>Cormorant Garamond</option><option>EB Garamond</option><option>Libre Baskerville</option>
+                <option>Raleway</option><option>Nunito</option><option>Work Sans</option>
+              </select>
+              <div class="te-row"><span class="te-field">Size</span><div class="te-step"><button onclick="teStepFont(-2)">&minus;</button><input id="ter-font-size" value="40"><button onclick="teStepFont(2)">+</button></div></div>
+              <div class="te-row"><span class="te-field">Weight</span><span class="te-val" id="ter-weight-val">600</span></div>
+              <input class="te-range" type="range" min="100" max="900" step="100" value="600" id="ter-weight" oninput="teApplyTypography()">
+              <div class="te-row"><span class="te-field">Letter spacing</span><span class="te-val" id="ter-letter-val">0px</span></div>
+              <input class="te-range" type="range" min="-2" max="10" value="0" id="ter-letter" oninput="teApplyTypography()">
+              <div class="te-row"><span class="te-field">Line height</span><span class="te-val" id="ter-line-val">1.25</span></div>
+              <input class="te-range" type="range" min="80" max="220" value="125" id="ter-line" oninput="teApplyTypography()">
+            </div>
+            <div class="te-section"><div class="te-label">Content</div><textarea id="ter-content" oninput="teApplyContent()"></textarea></div>
+          </div>
+
+          <div id="ter-background" class="te-rp">
+            <div class="te-rphead"><div class="te-badge">&#9632;</div><div><h3>Background</h3><p>Color, image or video</p></div></div>
+            <div class="te-section"><div class="te-label">Type</div>
+              <div class="te-seg">
+                <button class="on" onclick="teBgMode('color',this)">Color</button>
+                <button onclick="teBgMode('image',this)">Image</button>
+              </div>
+            </div>
+            <div class="te-section"><div class="te-label">Color</div>
+              <input type="text" id="ter-bg-hex" value="#2B2470" oninput="teSetBgColor(this.value)">
+              <div class="te-swatches" style="margin-top:7px">
+                <button class="te-swatch" style="background:#2b2470" onclick="teSetBgColor('#2b2470')"></button>
+                <button class="te-swatch" style="background:#0f3d2e" onclick="teSetBgColor('#0f3d2e')"></button>
+                <button class="te-swatch" style="background:#3a1414" onclick="teSetBgColor('#3a1414')"></button>
+                <button class="te-swatch" style="background:#111114" onclick="teSetBgColor('#111114')"></button>
+                <button class="te-swatch" style="background:#e8a33d" onclick="teSetBgColor('#e8a33d')"></button>
+              </div>
+            </div>
+            <div class="te-section"><div class="te-label">Opacity</div>
+              <div class="te-row"><span class="te-field">Background opacity</span><span class="te-val" id="ter-bg-op-val">100%</span></div>
+              <input class="te-range" type="range" min="0" max="100" value="100" oninput="document.getElementById('ter-bg-op-val').textContent=this.value+'%';teCanvas().style.opacity=this.value/100">
+            </div>
+          </div>
+
+          <div id="ter-logo" class="te-rp">
+            <div class="te-rphead"><div class="te-badge">&#9641;</div><div><h3>Logo image</h3><p>Movable brand element</p></div></div>
+            <div class="te-section"><div class="te-label">Size</div>
+              <input class="te-range" type="range" min="24" max="200" value="56" oninput="teResizeLogo(this.value)">
+            </div>
+            <div class="te-section"><div class="te-label">Opacity</div>
+              <div class="te-row"><span class="te-field">Transparency</span><span class="te-val" id="ter-logo-op-val">100%</span></div>
+              <input class="te-range" type="range" min="0" max="100" value="100" oninput="teLogoOpacity(this.value)">
+            </div>
+            <div class="te-section"><p class="te-field">Drag the logo on the canvas to position it.</p></div>
+          </div>
+
+          <div id="ter-alerts" class="te-rp">
+            <div class="te-rphead"><div class="te-badge">&#9673;</div><div><h3>Nursery alert</h3><p>Scrolling lower third</p></div></div>
+            <div class="te-section">
+              <div class="te-alert-preview"><div class="te-ticker"><span id="ter-alert-ticker">Parents of child #114, please check the nursery&nbsp;&nbsp;&nbsp;&nbsp;Parents of child #114, please check the nursery</span></div></div>
+              <textarea id="ter-alert-text" oninput="teUpdateAlertPreviewRight()">Parents of child #114, please check the nursery</textarea>
+            </div>
+            <div class="te-section"><div class="te-label">Speed</div>
+              <input class="te-range" type="range" min="1" max="10" value="5">
+            </div>
+            <div class="te-section"><button class="te-btn primary" style="width:100%" onclick="alert('Alert pushed live')">Push alert live</button></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- ========== BIBLE VERSIONS ========== -->
+    <div class="panel active" id="panel-versions">
+
+      <div class="section-label">INSTALLED VERSIONS — OFFLINE</div>
+      <div id="versions-list"><div class="row-label desc">loading…</div></div>
+
+      <div class="section-label">VOICE COMMANDS — SWITCH TRANSLATION</div>
+      <div class="row-label desc" style="margin-bottom:0;">Preset phrases the app already recognizes while listening.</div>
+      <div class="pill-row">
+        <span class="pill">give me NIV</span>
+        <span class="pill">switch to ESV</span>
+        <span class="pill">use King James</span>
+        <span class="pill">change the version to NLT</span>
+      </div>
+
+      <div class="section-label">CUSTOM COMMANDS</div>
+      <div class="row-label desc" style="margin-bottom:0;">Add a phrase pattern and the action it should trigger. Use <code style="background:#fff;padding:1px 5px;border-radius:4px;color:var(--accent-blue-dark);border:1px solid var(--border-soft);">{version}</code> as a placeholder wherever the spoken Bible version name should be captured.</div>
+
+      <div class="cmd-table">
+        <div class="cmd-row">
+          <input type="text" value="change the version to {version}" readonly>
+          <select disabled><option>Switch translation</option></select>
+          <button class="btn btn-sm btn-ghost cmd-soon">Edit</button>
+        </div>
+        <div class="cmd-row">
+          <input type="text" value="read from {version} instead" readonly>
+          <select disabled><option>Switch translation</option></select>
+          <button class="btn btn-sm btn-ghost cmd-soon">Edit</button>
+        </div>
+        <div class="cmd-row">
+          <input type="text" placeholder="Phrase, e.g. change the version to {version}">
+          <select>
+            <option>Switch translation</option>
+            <option>Next verse</option>
+            <option>Previous verse</option>
+            <option>Next slide</option>
+          </select>
+          <button class="btn btn-accent btn-sm cmd-soon">+ Add</button>
+        </div>
+      </div>
+
+      <div class="regex-note">
+        Behind the scenes each phrase compiles to a matching pattern, e.g.<br>
+        <code>/^(change|switch|set)\s+(the\s+)?version\s+to\s+(?&lt;version&gt;niv|kjv|nlt|esv|amp)$/i</code><br>
+        so "change the version to nlt" and "switch version to NLT" both resolve to the same action.
+      </div>
+    </div>
+
+    <!-- ========== STREAMING / NDI ========== -->
+    <div class="panel" id="panel-streaming">
+
+      <div class="conn-banner" id="ndi-banner">
+        <div class="status-dot" id="ndi-banner-dot"></div>
+        <span id="ndi-banner-text">Checking NDI status…</span>
+      </div>
+
+      <div class="section-label">SEND VERSES TO A LIVESTREAM</div>
+
+      <div class="output-option" id="ndi-card">
+        <div class="opt-head">
+          <div class="opt-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M22 8.5 16 12l6 3.5v-7z"/></svg>
+            NDI Output
+          </div>
+          <button class="toggle" id="ndi-toggle"><div class="knob"></div></button>
+        </div>
+        <div class="opt-desc">Broadcasts the current verse slide as an NDI source on your local network. Add it as an NDI source inside OBS Studio, vMix, or any NDI-compatible switcher, which then encodes and pushes the program feed to YouTube.</div>
+        <div class="opt-detail" id="ndi-detail">
+          <div class="field-grid">
+            <div class="field">
+              <label>NDI SOURCE NAME</label>
+              <input type="text" id="ndi-name">
+            </div>
+            <div class="field">
+              <label>OUTPUT RESOLUTION</label>
+              <select id="ndi-res">
+                <option value="1920x1080">1920 × 1080 (16:9)</option>
+                <option value="1280x720">1280 × 720 (16:9)</option>
+                <option value="1080x1920">1080 × 1920 (9:16)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>FRAME RATE</label>
+              <select id="ndi-fps">
+                <option value="30">30 fps</option>
+                <option value="25">25 fps</option>
+                <option value="60">60 fps</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>CONNECTED RECEIVERS</label>
+              <input type="text" id="ndi-connections" value="0" readonly>
+            </div>
+          </div>
+          <ol class="howto-steps">
+            <li>Enable NDI Output above.</li>
+            <li>Open OBS Studio → Sources → Add → <b>NDI Source</b>.</li>
+            <li>Select "<span id="ndi-name-echo">FaithView Pro - Main Display</span>" from the NDI source list.</li>
+            <li>Start your YouTube stream in OBS as usual — verses appear live.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="output-option on">
+        <div class="opt-head">
+          <div class="opt-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18M12 3a15 15 0 000 18"/></svg>
+            OBS Browser Source <span class="status-tag status-downloaded" style="margin-left:4px;">NO PLUG-INS NEEDED</span>
+          </div>
+        </div>
+        <div class="opt-desc">The simplest way to stream to YouTube: OBS captures the FaithView output page directly in a Browser source — no NDI runtime or extra software required. Works on any machine that can reach this server.</div>
+        <div class="opt-detail" style="display:block;">
+          <div class="field">
+            <label>OUTPUT PAGE URL</label>
+            <div class="url-row">
+              <input type="text" id="browser-url" readonly>
+              <button class="btn btn-sm" id="copy-url-btn">Copy</button>
+            </div>
+          </div>
+          <ol class="howto-steps">
+            <li>In OBS Studio → Sources → Add → <b>Browser</b>.</li>
+            <li>Paste the URL above; set width 1920, height 1080.</li>
+            <li>Tick "Refresh browser when scene becomes active".</li>
+            <li>Start streaming to YouTube — the slide shows through the browser source.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="output-option disabled">
+        <div class="opt-head">
+          <div class="opt-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="13" height="10" rx="2"/><circle cx="19.5" cy="12" r="2.5"/></svg>
+            Virtual Camera Output
+          </div>
+          <button class="toggle" disabled title="Requires the desktop companion app — coming soon"><div class="knob"></div></button>
+        </div>
+        <div class="opt-desc">Exposes the main display as a virtual webcam device selectable in OBS, Zoom, or any app that accepts a camera input. <i>Requires the desktop companion app — coming soon.</i></div>
+      </div>
+
+      <div class="output-option disabled">
+        <div class="opt-head">
+          <div class="opt-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v12H4z"/><path d="M9 20h6M12 16v4"/></svg>
+            Direct Display / Second Screen
+          </div>
+          <button class="toggle" disabled title="Requires the desktop companion app — coming soon"><div class="knob"></div></button>
+        </div>
+        <div class="opt-desc">Send the main display straight to an HDMI-connected capture card. <i>Requires the desktop companion app — coming soon.</i> Meanwhile, open the <b>Output window</b> (Live display → ↗ Output) fullscreen on the projector/HDMI screen.</div>
+      </div>
+
+    </div>
+
+    <!-- ========== ACCOUNT ========== -->
+    <div class="panel" id="panel-account">
+
+      <div class="section-label">REGISTERED ACCOUNT</div>
+      <div class="field-block">
+        <label>EMAIL ADDRESS</label>
+        <input type="email" value="Not signed in" readonly>
+      </div>
+      <div class="field-block">
+        <label>CHURCH / ORGANIZATION</label>
+        <input type="text" value="—" readonly>
+      </div>
+
+      <div class="section-label">LICENSE</div>
+      <div class="field-block">
+        <label>LICENSE KEY</label>
+        <div class="with-btn">
+          <input type="text" class="license-key" value="No license key on file yet" readonly>
+        </div>
+      </div>
+      <div class="field-block">
+        <label>PLAN</label>
+        <input type="text" value="Local / offline build" readonly>
+      </div>
+
+      <div class="section-label">SESSION</div>
+      <div class="row">
+        <div class="row-label">
+          <div class="title">Sign out</div>
+          <div class="desc">Account sign-in is not used in this local build.</div>
+        </div>
+        <div class="row-control"><button class="btn" disabled>Sign out</button></div>
+      </div>
+    </div>
+
+    <!-- ========== HELP & FEEDBACK ========== -->
+    <div class="panel" id="panel-help">
+
+      <div class="section-label">HELP</div>
+      <div class="help-card">
+        <div>
+          <div class="title">Getting started guide</div>
+          <div class="desc">Set up scripture detection, displays, and voice commands.</div>
+        </div>
+        <button class="btn btn-sm help-soon">Open</button>
+      </div>
+      <div class="help-card">
+        <div>
+          <div class="title">Contact support</div>
+          <div class="desc">Reach the FaithView Pro team directly.</div>
+        </div>
+        <button class="btn btn-sm help-soon">Open</button>
+      </div>
+
+      <div class="section-label">FEEDBACK</div>
+      <div class="field-block" style="max-width:100%;">
+        <label>SEND FEEDBACK</label>
+        <textarea rows="4" id="feedback-text" placeholder="Tell us what's working, what isn't, or what you'd like to see next..."></textarea>
+        <div style="margin-top:10px;"><button class="btn btn-accent btn-sm" id="feedback-btn">Send feedback</button></div>
+      </div>
+    </div>
+
+  </div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = location.origin;
+function $(sel){ return document.querySelector(sel); }
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+/* ---------- Panel switching ---------- */
+const navItems = document.querySelectorAll('.nav-item');
+const titleMap = { themes:'Theme Manager', versions:'Bible Versions', streaming:'Streaming / NDI',
+                   account:'Account', help:'Help &amp; Feedback' };
+navItems.forEach(item => {
+  item.addEventListener('click', () => {
+    navItems.forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    const key = item.dataset.panel;
+    document.getElementById('panel-' + key).classList.add('active');
+    document.getElementById('page-title').textContent = titleMap[key];
+    const ci = document.getElementById('content-inner');
+    const ct = document.querySelector('.content');
+    const main = document.querySelector('.main');
+    if (key === 'themes') {
+      ci.classList.add('themes-active');
+      ct.classList.add('themes-mode');
+      main.classList.add('themes-main');
+    } else {
+      ci.classList.remove('themes-active');
+      ct.classList.remove('themes-mode');
+      main.classList.remove('themes-main');
+    }
+  });
+});
+$("#close-btn").onclick = () => window.close();
+
+/* ---------- Placeholder actions ---------- */
+document.querySelectorAll('.cmd-soon').forEach(b =>
+  b.onclick = () => toast("Custom voice commands will be configurable in a future release."));
+document.querySelectorAll('.help-soon').forEach(b =>
+  b.onclick = () => toast("Bundled docs are not available in this build yet."));
+
+/* ---------- Bible versions list ---------- */
+async function loadVersions(){
+  try {
+    const r = await fetch(API + "/api/versions");
+    const d = await r.json();
+    const list = $("#versions-list");
+    list.innerHTML = "";
+    (d.versions || []).forEach(v => {
+      const card = document.createElement("div");
+      card.className = "version-card";
+      card.innerHTML =
+        '<div class="version-info">' +
+          '<div class="version-badge">' + v.code + '</div>' +
+          '<div><div class="version-name">' + v.name + '</div>' +
+          '<div class="version-sub">' + (v.size_mb != null ? v.size_mb + " MB · " : "") + 'installed offline</div></div>' +
+        '</div>' +
+        '<div class="version-actions">' +
+          (v.active ? '<span class="status-tag status-active">ACTIVE</span>' : '') +
+          '<span class="status-tag status-downloaded">INSTALLED</span>' +
+        '</div>';
+      list.appendChild(card);
+    });
+    if (!list.children.length) list.innerHTML = '<div class="row-label desc">no versions found</div>';
+  } catch(e){ $("#versions-list").innerHTML = '<div class="row-label desc">could not load versions</div>'; }
+}
+
+/* ---------- Streaming / NDI ---------- */
+let ndiState = null;   // last settings+status payload
+
+function renderNdi(){
+  if (!ndiState) return;
+  const st = ndiState.status || {};
+  const toggle = $("#ndi-toggle"), card = $("#ndi-card");
+  toggle.classList.toggle("on", !!ndiState.enabled);
+  card.classList.toggle("on", !!ndiState.enabled);
+  if (document.activeElement !== $("#ndi-name")) $("#ndi-name").value = ndiState.source_name || "";
+  $("#ndi-name-echo").textContent = ndiState.source_name || "";
+  $("#ndi-res").value = ndiState.resolution || "1920x1080";
+  $("#ndi-fps").value = String(ndiState.fps || 30);
+  $("#ndi-connections").value = String(st.connections || 0);
+
+  const dot = $("#ndi-banner-dot"), txt = $("#ndi-banner-text");
+  dot.className = "status-dot";
+  if (st.running){
+    dot.classList.add("live");
+    const tally = st.on_program
+      ? ' · <b style="color:var(--accent-green)">ON AIR</b>'
+      : (st.on_preview ? ' · <b style="color:var(--accent-yellow)">ON PREVIEW</b>' : '');
+    txt.innerHTML = "<b>Broadcasting as '" + (st.source_name || "") + "'</b> — " +
+      (st.connections || 0) + " receiver(s) connected" + tally + ". " +
+      "Add it in OBS → Sources → NDI Source, then stream to YouTube as usual.";
+  } else if (ndiState.enabled && st.reason){
+    dot.classList.add("err");
+    txt.innerHTML = "<b>NDI is on but the runtime is not available.</b><br>" + st.reason;
+  } else if (ndiState.enabled){
+    dot.classList.add("warn");
+    txt.textContent = "NDI is enabled, starting sender…";
+  } else {
+    txt.textContent = "NDI output is off. Turn it on to broadcast the verse slide to OBS over the network — or use the OBS Browser Source below, which needs no plug-ins.";
+  }
+}
+
+async function loadNdi(){
+  try {
+    const r = await fetch(API + "/api/settings");
+    const d = await r.json();
+    ndiState = d.ndi;
+    renderNdi();
+  } catch(e){ $("#ndi-banner-text").textContent = "could not reach server settings"; }
+}
+
+async function putNdi(patch){
+  try {
+    const r = await fetch(API + "/api/settings/ndi", {
+      method:"PUT", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(patch),
+    });
+    const d = await r.json();
+    if (d.error){ toast(d.error); return; }
+    ndiState = d.ndi;
+    renderNdi();
+  } catch(e){ toast("settings save failed"); }
+}
+
+$("#ndi-toggle").onclick = () => putNdi({enabled: !(ndiState && ndiState.enabled)});
+$("#ndi-name").onchange = () => { if ($("#ndi-name").value.trim()) putNdi({source_name: $("#ndi-name").value.trim()}); };
+$("#ndi-res").onchange = () => putNdi({resolution: $("#ndi-res").value});
+$("#ndi-fps").onchange = () => putNdi({fps: parseInt($("#ndi-fps").value, 10)});
+
+/* OBS browser-source URL */
+$("#browser-url").value = API + "/output";
+$("#copy-url-btn").onclick = async () => {
+  try { await navigator.clipboard.writeText($("#browser-url").value); toast("URL copied"); }
+  catch(e){ $("#browser-url").select(); document.execCommand("copy"); toast("URL copied"); }
+};
+
+/* ---------- Feedback ---------- */
+$("#feedback-btn").onclick = async () => {
+  const msg = $("#feedback-text").value.trim();
+  if (!msg){ toast("write a message first"); return; }
+  try {
+    const r = await fetch(API + "/api/feedback", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({message: msg}),
+    });
+    const d = await r.json();
+    if (d.saved){ $("#feedback-text").value = ""; toast("Thanks! Feedback saved."); }
+    else toast(d.error || "could not save feedback");
+  } catch(e){ toast("could not save feedback"); }
+};
+
+/* ---------- init + status polling ---------- */
+// deep-link: /settings#streaming opens a specific panel
+const hash = location.hash.replace('#','');
+if (titleMap[hash]){
+  navItems.forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelector('.nav-item[data-panel="' + hash + '"]').classList.add('active');
+  document.getElementById('panel-' + hash).classList.add('active');
+  document.getElementById('page-title').textContent = titleMap[hash];
+  if (hash === 'themes'){
+    document.getElementById('content-inner').classList.add('themes-active');
+    document.querySelector('.content').classList.add('themes-mode');
+    document.querySelector('.main').classList.add('themes-main');
+  }
+}
+loadVersions();
+loadNdi();
+setInterval(loadNdi, 5000);   // keep receiver count / status fresh
+
+/* ================================================================
+   THEME MANAGER — Full editor
+   ================================================================ */
+(function(){
+  const TE = {
+    themes: [],
+    activeId: null,
+    selected: null,
+    drag: null, ox: 0, oy: 0,
+    media: []
+  };
+
+  function teCanvas(){ return document.getElementById('te-canvas'); }
+
+  /* ---------- UUID ---------- */
+  function uuid(){ return 'xxxx-xxxx-xxxx'.replace(/x/g,()=>(Math.random()*16|0).toString(16)); }
+
+  /* ---------- Default theme ---------- */
+  function defaultTheme(){
+    return {
+      id: uuid(), name: 'New Theme',
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      canvas: { width:1920, height:1080, bgType:'color', bgColor:'#2b2470', bgImage:'', bgFit:'cover', bgOpacity:100 },
+      elements: [
+        { id:'el-verse', type:'verse', text:'In the beginning God created the heaven and the earth',
+          x:8, y:20, w:84, h:15, font:'Georgia', size:40, weight:600, color:'#ffffff', align:'center',
+          letterSpacing:0, lineHeight:1.25, opacity:1 },
+        { id:'el-ref', type:'ref', text:'Genesis 1:1 (NKJV)',
+          x:12, y:62, w:76, h:8, font:'Georgia', size:16, weight:700, color:'#f1d9a3', align:'center',
+          letterSpacing:0, lineHeight:1.25, opacity:1 },
+        { id:'el-copy', type:'copy', text:"Christ's Heart Church",
+          x:1.2, y:89, w:30, h:6, font:'Inter', size:11, weight:600, color:'#ffffffc0', align:'left',
+          letterSpacing:0, lineHeight:1.25, opacity:1 },
+        { id:'el-logo', type:'logo', text:'CH',
+          x:89, y:3, w:5, h:9, font:'', size:20, weight:800, color:'#1a1200', align:'center',
+          letterSpacing:0, lineHeight:1.25, opacity:1, logoBg:'#e8a33d' }
+      ],
+      alerts: { text:'Parents of child #114, please check the nursery', speed:5,
+        font:'Inter', fontSize:14, fontWeight:700, textColor:'#ffffff', bgColor:'#8b6bff' }
+    };
+  }
+
+  /* ---------- Persistence ---------- */
+  function saveAll(){
+    try { localStorage.setItem('faithview-themes', JSON.stringify(TE.themes)); } catch(e){}
+    const sync = document.getElementById('te-sync');
+    if(sync) sync.innerHTML = '<b>&#9679;</b> Saved locally';
+  }
+  function loadAll(){
+    try {
+      const d = JSON.parse(localStorage.getItem('faithview-themes'));
+      if(Array.isArray(d) && d.length) TE.themes = d;
+      else { TE.themes = [defaultTheme()]; saveAll(); }
+    } catch(e){ TE.themes = [defaultTheme()]; saveAll(); }
+    if(!TE.activeId) TE.activeId = TE.themes[0].id;
+  }
+
+  /* ---------- Theme list ---------- */
+  function renderThemeList(){
+    const el = document.getElementById('te-theme-list');
+    if(!el) return;
+    el.innerHTML = '';
+    TE.themes.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'te-theme-card' + (t.id === TE.activeId ? ' sel' : '');
+      const bg = t.canvas && t.canvas.bgColor ? t.canvas.bgColor : '#2b2470';
+      card.innerHTML = '<div class="te-thumb" style="background:linear-gradient(135deg,' + bg + ',' + bg + 'cc)"></div>' +
+        '<div>' + escHtml(t.name) + '<small>' + timeAgo(t.updatedAt) + '</small></div>';
+      card.onclick = () => switchTheme(t.id);
+      el.appendChild(card);
+    });
+  }
+
+  function switchTheme(id){
+    TE.activeId = id;
+    const t = getActive();
+    if(!t) return;
+    document.getElementById('te-theme-name').value = t.name;
+    renderThemeList();
+    rebuildCanvas();
+  }
+
+  function getActive(){ return TE.themes.find(t => t.id === TE.activeId) || TE.themes[0]; }
+
+  /* ---------- Rebuild canvas from theme ---------- */
+  function rebuildCanvas(){
+    const c = teCanvas();
+    const t = getActive();
+    if(!t) return;
+    // Remove old elements (keep toolbar + zoom)
+    c.querySelectorAll('.te-element').forEach(e => e.remove());
+    // Background
+    applyCanvasBg(t);
+    // Elements
+    t.elements.forEach(el => {
+      const div = createElDiv(el);
+      c.appendChild(div);
+    });
+  }
+
+  function applyCanvasBg(t){
+    const c = teCanvas();
+    if(t.canvas.bgType === 'image' && t.canvas.bgImage){
+      c.style.backgroundImage = 'linear-gradient(#08061166,#08061188),url("' + t.canvas.bgImage + '")';
+      c.style.backgroundColor = 'transparent';
+      c.style.backgroundSize = t.canvas.bgFit || 'cover';
+    } else {
+      c.style.backgroundImage = 'none';
+      c.style.backgroundColor = t.canvas.bgColor || '#2b2470';
+    }
+    c.style.opacity = (t.canvas.bgOpacity != null ? t.canvas.bgOpacity : 100) / 100;
+  }
+
+  function createElDiv(el){
+    const div = document.createElement('div');
+    div.className = 'te-element';
+    div.dataset.type = el.type;
+    div.dataset.elId = el.id;
+    div.style.left = el.x + '%';
+    div.style.top = el.y + '%';
+    div.style.width = el.w + '%';
+    if(el.h) div.style.height = el.h + '%';
+    div.style.textAlign = el.align || 'center';
+    div.style.fontFamily = el.font || 'Georgia';
+    div.style.fontSize = (el.size || 40) + 'px';
+    div.style.fontWeight = el.weight || 600;
+    div.style.color = el.color || '#fff';
+    div.style.letterSpacing = (el.letterSpacing || 0) + 'px';
+    div.style.lineHeight = el.lineHeight || 1.25;
+    div.style.opacity = el.opacity != null ? el.opacity : 1;
+
+    if(el.type === 'logo'){
+      div.innerHTML = '<div class="te-logo-mark" style="background:' + (el.logoBg || '#e8a33d') + '">' + escHtml(el.text || 'CH') + '</div>' +
+        '<span class="te-handle nw"></span><span class="te-handle ne"></span><span class="te-handle sw"></span><span class="te-handle se"></span>';
+    } else {
+      div.textContent = el.text || '';
+      div.innerHTML += '<span class="te-handle nw"></span><span class="te-handle ne"></span><span class="te-handle sw"></span><span class="te-handle se"></span>';
+    }
+
+    div.addEventListener('mousedown', e => {
+      if(e.target.classList.contains('te-handle')){ startResize(e, div, e.target); return; }
+      TE.drag = div; TE.ox = e.offsetX; TE.oy = e.offsetY;
+      e.preventDefault();
+    });
+    div.addEventListener('click', e => teSelectElement(div, e));
+    return div;
+  }
+
+  /* ---------- Select element ---------- */
+  function teSelectElement(el, e){
+    if(e) e.stopPropagation();
+    TE.selected = el;
+    document.querySelectorAll('.te-element').forEach(x => x.classList.remove('selected'));
+    el.classList.add('selected');
+    const type = el.dataset.type;
+    showRightPanel(type === 'verse' || type === 'ref' || type === 'copy' ? 'text' : type);
+    if(type === 'verse' || type === 'ref' || type === 'copy'){
+      document.getElementById('ter-text-title').textContent =
+        {verse:'Verse text', ref:'Reference', copy:'Copyright / church name'}[type] || 'Text';
+      const t = getActive();
+      const elData = t ? t.elements.find(e => e.id === el.dataset.elId) : null;
+      if(elData){
+        document.getElementById('ter-content').value = elData.text || '';
+        document.getElementById('ter-font-size').value = elData.size || 40;
+        document.getElementById('ter-font-family').value = elData.font || 'Georgia';
+        document.getElementById('ter-weight').value = elData.weight || 600;
+        document.getElementById('ter-weight-val').textContent = elData.weight || 600;
+        document.getElementById('ter-letter').value = elData.letterSpacing || 0;
+        document.getElementById('ter-letter-val').textContent = (elData.letterSpacing || 0) + 'px';
+        document.getElementById('ter-line').value = (elData.lineHeight || 1.25) * 100;
+        document.getElementById('ter-line-val').textContent = (elData.lineHeight || 1.25).toFixed(2);
+        document.getElementById('ter-hex').value = elData.color || '#ffffff';
+        const segBtns = document.querySelectorAll('#ter-text .te-seg button');
+        segBtns.forEach(b => b.classList.remove('on'));
+        if(elData.align === 'left') segBtns[0].classList.add('on');
+        else if(elData.align === 'right') segBtns[2].classList.add('on');
+        else segBtns[1].classList.add('on');
+      }
+    }
+  }
+
+  function showRightPanel(which){
+    document.querySelectorAll('.te-rp').forEach(p => p.classList.remove('active'));
+    const p = document.getElementById('ter-' + which);
+    if(p) p.classList.add('active');
+  }
+
+  /* ---------- Canvas click = deselect / background ---------- */
+  function setupCanvasClick(){
+    teCanvas().addEventListener('click', e => {
+      if(e.target === teCanvas()){
+        TE.selected = null;
+        teCanvas().querySelectorAll('.te-element').forEach(x => x.classList.remove('selected'));
+        showRightPanel('background');
+      }
+    });
+  }
+
+  /* ---------- Drag ---------- */
+  document.addEventListener('mousemove', e => {
+    if(!TE.drag) return;
+    const c = teCanvas();
+    const r = c.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width * 100);
+    const y = ((e.clientY - r.top) / r.height * 100);
+    TE.drag.style.left = Math.max(0, Math.min(95, x - (TE.ox / r.width * 100))) + '%';
+    TE.drag.style.top = Math.max(0, Math.min(95, y - (TE.oy / r.height * 100))) + '%';
+    TE.drag.style.right = 'auto';
+    syncElData(TE.drag);
+  });
+  document.addEventListener('mouseup', () => { TE.drag = null; });
+
+  function syncElData(div){
+    const t = getActive();
+    if(!t) return;
+    const el = t.elements.find(e => e.id === div.dataset.elId);
+    if(!el) return;
+    el.x = parseFloat(div.style.left);
+    el.y = parseFloat(div.style.top);
+  }
+
+  /* ---------- Resize ---------- */
+  function startResize(e, div, handle){
+    e.stopPropagation(); e.preventDefault();
+    const startX = e.clientX, startY = e.clientY;
+    const startW = div.offsetWidth, startH = div.offsetHeight;
+    const isSE = handle.classList.contains('se');
+    function onMove(ev){
+      const dx = ev.clientX - startX, dy = ev.clientY - startY;
+      if(isSE){
+        div.style.width = Math.max(30, startW + dx) + 'px';
+        div.style.height = Math.max(20, startH + dy) + 'px';
+      }
+    }
+    function onUp(){
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      syncElData(div);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+
+  /* ---------- Left rail / context panel ---------- */
+  window.teLeftTab = function(btn){
+    document.querySelectorAll('.te-rail button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.te-lp').forEach(p => p.classList.remove('active'));
+    const p = document.getElementById('tel-' + btn.dataset.left);
+    if(p) p.classList.add('active');
+    if(btn.dataset.left === 'alerts') showRightPanel('alerts');
+  };
+
+  /* ---------- Add element ---------- */
+  window.teAddElement = function(type){
+    const t = getActive();
+    if(!t) return;
+    const id = 'el-' + uuid();
+    const el = {
+      id: id, type: type,
+      text: type === 'verse' ? 'New verse text' : type === 'ref' ? 'Reference' : type === 'copy' ? 'Church name' : type === 'logo' ? 'CH' : 'New text',
+      x: 30, y: 35, w: 30, h: 10,
+      font: type === 'logo' ? '' : 'Georgia', size: type === 'logo' ? 20 : 36,
+      weight: 600, color: type === 'copy' ? '#ffffffc0' : '#ffffff',
+      align: 'center', letterSpacing: 0, lineHeight: 1.25, opacity: 1,
+      logoBg: type === 'logo' ? '#e8a33d' : undefined
+    };
+    t.elements.push(el);
+    const div = createElDiv(el);
+    teCanvas().appendChild(div);
+    teSelectElement(div, {stopPropagation(){}});
+    saveAll();
+  };
+
+  /* ---------- Delete / Duplicate ---------- */
+  window.teDeleteSelected = function(){
+    if(!TE.selected) return;
+    const t = getActive();
+    if(t){
+      t.elements = t.elements.filter(e => e.id !== TE.selected.dataset.elId);
+    }
+    TE.selected.remove();
+    TE.selected = null;
+    showRightPanel('empty');
+    saveAll();
+  };
+
+  window.teDuplicateSelected = function(){
+    if(!TE.selected) return;
+    const t = getActive();
+    const elData = t ? t.elements.find(e => e.id === TE.selected.dataset.elId) : null;
+    if(!elData) return;
+    const newEl = Object.assign({}, elData, { id: 'el-' + uuid(), x: elData.x + 3, y: elData.y + 3 });
+    t.elements.push(newEl);
+    const div = createElDiv(newEl);
+    teCanvas().appendChild(div);
+    teSelectElement(div, {stopPropagation(){}});
+    saveAll();
+  };
+
+  /* ---------- Align ---------- */
+  window.teAlignEl = function(a){
+    if(!TE.selected) return;
+    const t = getActive();
+    const el = t ? t.elements.find(e => e.id === TE.selected.dataset.elId) : null;
+    if(a === 'left') TE.selected.style.left = '2%';
+    if(a === 'center'){ TE.selected.style.left = '50%'; TE.selected.style.transform = 'translateX(-50%)'; }
+    if(a === 'right'){ TE.selected.style.left = 'auto'; TE.selected.style.right = '2%'; }
+    if(el) el.align = a;
+    // Update seg buttons
+    const segBtns = document.querySelectorAll('#ter-text .te-seg button');
+    segBtns.forEach(b => b.classList.remove('on'));
+    if(a === 'left') segBtns[0].classList.add('on');
+    else if(a === 'right') segBtns[2].classList.add('on');
+    else segBtns[1].classList.add('on');
+    saveAll();
+  };
+
+  /* ---------- Typography ---------- */
+  window.teApplyTypography = function(){
+    if(!TE.selected) return;
+    const t = getActive();
+    const el = t ? t.elements.find(e => e.id === TE.selected.dataset.elId) : null;
+    const ff = document.getElementById('ter-font-family').value;
+    const fs = document.getElementById('ter-font-size').value;
+    const fw = document.getElementById('ter-weight').value;
+    const ls = document.getElementById('ter-letter').value;
+    const lh = document.getElementById('ter-line').value;
+    TE.selected.style.fontFamily = ff;
+    TE.selected.style.fontSize = fs + 'px';
+    TE.selected.style.fontWeight = fw;
+    TE.selected.style.letterSpacing = ls + 'px';
+    TE.selected.style.lineHeight = (lh / 100).toFixed(2);
+    document.getElementById('ter-weight-val').textContent = fw;
+    document.getElementById('ter-letter-val').textContent = ls + 'px';
+    document.getElementById('ter-line-val').textContent = (lh / 100).toFixed(2);
+    if(el){ el.font = ff; el.size = parseInt(fs); el.weight = parseInt(fw);
+      el.letterSpacing = parseInt(ls); el.lineHeight = parseFloat((lh/100).toFixed(2)); }
+    saveAll();
+  };
+
+  window.teStepFont = function(n){
+    if(!TE.selected) return;
+    const inp = document.getElementById('ter-font-size');
+    const v = Math.max(8, (parseInt(inp.value) || 40) + n);
+    inp.value = v;
+    TE.selected.style.fontSize = v + 'px';
+    const t = getActive();
+    const el = t ? t.elements.find(e => e.id === TE.selected.dataset.elId) : null;
+    if(el) el.size = v;
+    saveAll();
+  };
+
+  /* ---------- Color ---------- */
+  window.teSetTextColor = function(c){
+    if(!TE.selected) return;
+    TE.selected.style.color = c;
+    document.getElementById('ter-hex').value = c;
+    const t = getActive();
+    const el = t ? t.elements.find(e => e.id === TE.selected.dataset.elId) : null;
+    if(el) el.color = c;
+    saveAll();
+  };
+
+  window.teSetAlign = function(a){
+    if(!TE.selected) return;
+    TE.selected.style.textAlign = a;
+    const t = getActive();
+    const el = t ? t.elements.find(e => e.id === TE.selected.dataset.elId) : null;
+    if(el) el.align = a;
+    const segBtns = document.querySelectorAll('#ter-text .te-seg button');
+    segBtns.forEach(b => b.classList.remove('on'));
+    if(a === 'left') segBtns[0].classList.add('on');
+    else if(a === 'right') segBtns[2].classList.add('on');
+    else segBtns[1].classList.add('on');
+    saveAll();
+  };
+
+  window.teApplyContent = function(){
+    if(!TE.selected) return;
+    const v = document.getElementById('ter-content').value;
+    // Keep only text node, not handles
+    const handles = TE.selected.querySelectorAll('.te-handle');
+    TE.selected.textContent = v;
+    handles.forEach(h => TE.selected.appendChild(h));
+    const t = getActive();
+    const el = t ? t.elements.find(e => e.id === TE.selected.dataset.elId) : null;
+    if(el) el.text = v;
+    saveAll();
+  };
+
+  /* ---------- Background ---------- */
+  window.teSetBgColor = function(c){
+    const t = getActive();
+    if(!t) return;
+    t.canvas.bgType = 'color';
+    t.canvas.bgColor = c;
+    applyCanvasBg(t);
+    document.getElementById('te-bg-hex').value = c;
+    document.getElementById('ter-bg-hex').value = c;
+    document.getElementById('te-bg-image-opts').style.display = 'none';
+    saveAll();
+  };
+
+  window.teBgMode = function(mode, btn){
+    if(btn){
+      btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+    }
+    const t = getActive();
+    if(!t) return;
+    if(mode === 'color'){
+      teSetBgColor(t.canvas.bgColor || '#2b2470');
+    } else if(mode === 'image'){
+      t.canvas.bgType = 'image';
+      if(!t.canvas.bgImage) t.canvas.bgImage = '';
+      applyCanvasBg(t);
+      document.getElementById('te-bg-image-opts').style.display = 'block';
+      saveAll();
+    }
+  };
+
+  window.teUpdateBgScale = function(){
+    const v = document.getElementById('te-bg-scale').value;
+    document.getElementById('te-bg-scale-val').textContent = v + '%';
+    teCanvas().style.backgroundSize = v + '%';
+  };
+
+  window.teUpdateBgOpacity = function(){
+    const v = document.getElementById('te-bg-opacity').value;
+    document.getElementById('te-bg-opacity-val').textContent = v + '%';
+    const t = getActive();
+    if(t) t.canvas.bgOpacity = parseInt(v);
+    teCanvas().style.opacity = v / 100;
+    saveAll();
+  };
+
+  window.teHandleBgUpload = function(input){
+    const f = input.files[0];
+    if(!f) return;
+    if(f.type.startsWith('image/')){
+      const url = URL.createObjectURL(f);
+      const t = getActive();
+      if(t){ t.canvas.bgType = 'image'; t.canvas.bgImage = url; applyCanvasBg(t); }
+      document.getElementById('te-bg-image-opts').style.display = 'block';
+      saveAll();
+    }
+  };
+
+  /* ---------- Uploads ---------- */
+  window.teHandleUpload = function(input){
+    const f = input.files[0];
+    if(!f) return;
+    if(f.type.startsWith('image/')){
+      const url = URL.createObjectURL(f);
+      TE.media.push({ name: f.name, url: url, type: 'image' });
+      renderMediaGrid();
+    }
+  };
+
+  function renderMediaGrid(){
+    const grid = document.getElementById('te-media-grid');
+    if(!grid) return;
+    grid.innerHTML = '';
+    TE.media.forEach(m => {
+      const d = document.createElement('div');
+      d.innerHTML = '<img src="' + m.url + '"><span>' + escHtml(m.name) + '</span>';
+      grid.appendChild(d);
+    });
+    const add = document.createElement('div');
+    add.className = 'te-add';
+    add.textContent = '+ Add';
+    add.onclick = () => document.getElementById('te-upload-file').click();
+    grid.appendChild(add);
+  }
+
+  /* ---------- Logo ---------- */
+  window.teResizeLogo = function(v){
+    if(!TE.selected || TE.selected.dataset.type !== 'logo') return;
+    TE.selected.style.width = v + 'px';
+    TE.selected.style.height = v + 'px';
+    const t = getActive();
+    const el = t ? t.elements.find(e => e.id === TE.selected.dataset.elId) : null;
+    if(el){ el.w = parseInt(v); el.h = parseInt(v); }
+    saveAll();
+  };
+
+  window.teLogoOpacity = function(v){
+    if(!TE.selected) return;
+    TE.selected.style.opacity = v / 100;
+    document.getElementById('ter-logo-op-val').textContent = v + '%';
+    const t = getActive();
+    const el = t ? t.elements.find(e => e.id === TE.selected.dataset.elId) : null;
+    if(el) el.opacity = v / 100;
+    saveAll();
+  };
+
+  /* ---------- Alerts ---------- */
+  window.teUpdateAlertPreview = function(){
+    const v = document.getElementById('te-alert-text').value;
+    document.getElementById('te-alert-ticker-text').textContent = v + '        ' + v;
+    const t = getActive();
+    if(t) t.alerts.text = v;
+    saveAll();
+  };
+
+  window.teUpdateAlertPreviewRight = function(){
+    const v = document.getElementById('ter-alert-text').value;
+    document.getElementById('ter-alert-ticker').textContent = v + '        ' + v;
+    document.getElementById('te-alert-text').value = v;
+    teUpdateAlertPreview();
+  };
+
+  window.teUpdateAlertSpeed = function(){
+    const v = document.getElementById('te-alert-speed').value;
+    const labels = ['Very slow','Slow','Slow','Medium','Medium','Medium','Fast','Fast','Very fast','Very fast'];
+    document.getElementById('te-alert-speed-val').textContent = labels[v - 1] || 'Medium';
+    const t = getActive();
+    if(t) t.alerts.speed = parseInt(v);
+    saveAll();
+  };
+
+  window.teStepAlertFont = function(n){
+    const inp = document.getElementById('te-alert-font-size');
+    inp.value = Math.max(8, parseInt(inp.value) + n);
+  };
+
+  /* ---------- Theme CRUD ---------- */
+  document.getElementById('te-new-theme-btn').onclick = function(){
+    const t = defaultTheme();
+    t.name = 'New Theme';
+    TE.themes.push(t);
+    TE.activeId = t.id;
+    document.getElementById('te-theme-name').value = t.name;
+    renderThemeList();
+    rebuildCanvas();
+    saveAll();
+  };
+
+  document.getElementById('te-theme-name').onchange = function(){
+    const t = getActive();
+    if(t) t.name = this.value.trim() || 'Untitled';
+    renderThemeList();
+    saveAll();
+  };
+
+  document.getElementById('te-save-btn').onclick = function(){
+    const t = getActive();
+    if(t) t.updatedAt = new Date().toISOString();
+    saveAll();
+    toast('Theme saved');
+    // Push theme to live output
+    if(t){
+      const verseEl = (t.elements||[]).find(e=>e.type==='verse');
+      const refEl = (t.elements||[]).find(e=>e.type==='ref');
+      const text = verseEl ? verseEl.text : '';
+      const reference = refEl ? refEl.text : '';
+      fetch('/present-theme', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ theme: Object.assign({}, t, {reference, text}) })
+      }).then(r=>r.json()).then(d=>{
+        if(d.ok) toast('Theme pushed to live output');
+      }).catch(e=> console.warn('present-theme error',e));
+    }
+  };
+
+  document.getElementById('te-export-btn').onclick = function(){
+    const t = getActive();
+    if(!t) return;
+    const blob = new Blob([JSON.stringify(t, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (t.name || 'theme').replace(/[^a-z0-9]/gi, '_') + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('Theme exported');
+  };
+
+  document.getElementById('te-import-item').onclick = function(){
+    document.getElementById('te-import-input').click();
+  };
+
+  document.getElementById('te-import-input').onchange = function(){
+    const f = this.files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = function(e){
+      try {
+        const imported = JSON.parse(e.target.result);
+        if(!imported.id) imported.id = uuid();
+        imported.name = imported.name + ' (imported)';
+        imported.updatedAt = new Date().toISOString();
+        TE.themes.push(imported);
+        TE.activeId = imported.id;
+        renderThemeList();
+        rebuildCanvas();
+        document.getElementById('te-theme-name').value = imported.name;
+        saveAll();
+        toast('Theme imported');
+      } catch(err){ toast('Invalid theme file'); }
+    };
+    reader.readAsText(f);
+    this.value = '';
+  };
+
+  /* ---------- Keyboard shortcuts ---------- */
+  document.addEventListener('keydown', e => {
+    if(!document.getElementById('panel-themes').classList.contains('active')) return;
+    if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if(e.key === 'Delete' || e.key === 'Backspace') teDeleteSelected();
+    if(e.key === 'Escape'){
+      TE.selected = null;
+      teCanvas().querySelectorAll('.te-element').forEach(x => x.classList.remove('selected'));
+      showRightPanel('empty');
+    }
+  });
+
+  /* ---------- Helpers ---------- */
+  function escHtml(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function timeAgo(d){
+    if(!d) return '';
+    const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+    if(s < 60) return 'just now';
+    if(s < 3600) return Math.floor(s/60) + 'm ago';
+    if(s < 86400) return Math.floor(s/3600) + 'h ago';
+    return Math.floor(s/86400) + 'd ago';
+  }
+
+  /* ---------- Deep-link ---------- */
+  function checkThemesDeepLink(){
+    const h = location.hash.replace('#','');
+    if(h === 'themes'){
+      const ci = document.getElementById('content-inner');
+      const ct = document.querySelector('.content');
+      ci.classList.add('themes-active');
+      ct.classList.add('themes-mode');
+    }
+  }
+
+  /* ---------- Init ---------- */
+  loadAll();
+  renderThemeList();
+  rebuildCanvas();
+  setupCanvasClick();
+  renderMediaGrid();
+  checkThemesDeepLink();
+
+})();
+</script>
+
+</body>
+</html>

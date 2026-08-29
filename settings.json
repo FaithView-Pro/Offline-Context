@@ -1,0 +1,8 @@
+{
+  "ndi": {
+    "enabled": false,
+    "source_name": "FaithView Pro - Main Display",
+    "resolution": "1920x1080",
+    "fps": 30
+  }
+}

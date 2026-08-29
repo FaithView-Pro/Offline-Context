@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FaithView Pro — Theme Manager</title>
+<style>
+:root{I'll update index.html so clicking a source button immediately highlights it and shows "Listening…" (unless in Manual mode). I'll patch the source button click handler and updateSource to update the status text optimistically.
+
+Generated patch in static/index.html
+
+  --bg:#ffffff;--panel:#ffffff;--panel2:#f1f5fb;--panel3:#e9eff7;
+  --line:#dde5ef;--text:#12233a;--muted:#54677d;--accent:#2563eb;
+  --accent2:#1d4ed8;--green:#16a34a;--danger:#dc2626;--radius:10px;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;--display:Georgia,serif;
+}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui);height:100vh;overflow:hidden}
+button,input,select,textarea{font:inherit} button{cursor:pointer}
+.app{height:100vh;display:grid;grid-template-columns:72px 270px 1fr 330px;grid-template-rows:58px 1fr}
+.top{grid-column:1/-1;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 18px}
+.brand{font-weight:700;font-size:14px}.brand i{display:inline-block;width:9px;height:9px;border-radius:3px;background:linear-gradient(135deg,var(--accent),#2563eb);margin-right:8px}
+.theme-title{color:var(--muted);padding:7px 10px;border:1px solid transparent;border-radius:7px}.theme-title:hover{border-color:var(--line);background:var(--panel2);color:var(--text)}
+.spacer{flex:1}.sync{font-size:11px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);padding:6px 10px;border-radius:20px}.sync b{color:var(--green)}
+.btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 12px;border-radius:8px;font-size:12px}.btn:hover{background:var(--panel3)}.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.rail{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:4px}
+.rail button{width:56px;height:55px;border:0;background:none;color:var(--muted);border-radius:9px;font-size:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}.rail button:hover,.rail button.active{background:#e9f1fe;color:var(--accent)}
+.rail svg{width:19px;height:19px}.sep{height:1px;background:var(--line);width:32px;margin:8px}
+.left{background:var(--panel);border-right:1px solid var(--line);overflow:auto}.lp{display:none}.lp.active{display:block}.head{padding:18px;border-bottom:1px solid var(--line)}.head h3{margin:0;font-size:15px}.head p{margin:5px 0 0;color:var(--muted);font-size:11px;line-height:1.4}
+.section{padding:15px 17px;border-bottom:1px solid var(--line)}.label{font-size:10px;color:#8d9cae;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:9px}
+.item{padding:10px;border:1px solid var(--line);background:var(--panel2);border-radius:8px;margin-bottom:7px;font-size:12px}.item:hover{border-color:var(--accent)}.theme{display:flex;gap:9px;align-items:center;border:1px solid transparent;padding:8px;border-radius:8px}.theme:hover,.theme.sel{background:#e9f1fe;border-color:var(--accent)}.thumb{width:50px;height:31px;border-radius:5px;background:linear-gradient(135deg,#2563eb,#60a5fa)}.theme small{display:block;color:var(--muted);margin-top:2px}
+.canvas-wrap{background:#f8fafd;display:flex;align-items:center;justify-content:center;position:relative;overflow:auto;background-image:radial-gradient(#dde5ef 1px,transparent 1px);background-size:22px 22px}
+.canvas{width:min(920px,calc(100% - 50px));aspect-ratio:16/9;position:relative;overflow:hidden;border-radius:5px;background:#2b2470 center/cover;box-shadow:0 30px 70px rgba(0,0,0,.12)}
+.canvas.video{background:linear-gradient(rgba(0,0,0,.3),rgba(0,0,0,.4)),url('https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=1400') center/cover}
+.element{position:absolute;border:2px solid transparent;padding:5px 8px;border-radius:5px;user-select:none;cursor:move}.element:hover{border-color:rgba(37,99,235,.4)}.element.selected{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.14)}.handle{display:none;position:absolute;width:8px;height:8px;background:var(--accent);border:1px solid white;border-radius:2px}.selected .handle{display:block}.nw{left:-6px;top:-6px}.ne{right:-6px;top:-6px}.sw{left:-6px;bottom:-6px}.se{right:-6px;bottom:-6px}
+.verse{left:8%;top:20%;width:84%;text-align:center;font:600 clamp(24px,4vw,44px)/1.25 var(--display);color:white}.ref{left:12%;top:62%;width:76%;text-align:center;font-size:18px;font-weight:700;letter-spacing:.06em;color:#f1d9a3;text-transform:uppercase}.copy{left:22px;bottom:16px;font-size:12px;color:#fffc}.logo{right:24px;top:20px;width:65px;height:65px;padding:0}.logo .mark{width:100%;height:100%;display:block;object-fit:cover;border-radius:12px;background:#e8a33d;color:#1a1200;font-weight:800;font-size:23px}
+.toolbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:4px;border-radius:9px;display:flex;gap:3px;z-index:5}.toolbar button{width:31px;height:29px;border:0;background:none;color:var(--muted);border-radius:6px}.toolbar button:hover{background:var(--panel3);color:var(--text)}
+.live{position:absolute;bottom:12px;left:14px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.3);color:#dc2626;border-radius:20px;padding:5px 9px;font-size:10px;font-weight:700}.live b{display:inline-block;width:7px;height:7px;border-radius:50%;background:#dc2626;margin-right:5px}
+.zoom{position:absolute;right:14px;bottom:12px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px 9px;color:var(--muted);font-size:10px}
+.right{background:var(--panel);border-left:1px solid var(--line);overflow:auto}.rp{display:none}.rp.active{display:block}.rphead{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;gap:9px;align-items:center}.badge{width:29px;height:29px;border-radius:7px;background:#e9f1fe;color:var(--accent);display:grid;place-items:center}.rphead h3{font-size:13px;margin:0}.rphead p{font-size:10px;color:var(--muted);margin:2px 0 0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:9px 0}.field{font-size:11px;color:var(--muted)}.section select,.section input[type=text],.section textarea{width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:8px;font-size:12px}.section textarea{min-height:70px;resize:vertical}
+.swatches{display:flex;gap:7px;flex-wrap:wrap}.swatch{width:25px;height:25px;border-radius:7px;border:1px solid var(--line)}.swatch.on{outline:2px solid var(--accent);outline-offset:2px}
+.seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:2px}.seg button{flex:1;border:0;background:none;color:var(--muted);padding:6px}.seg button.on{background:var(--panel3);color:var(--accent);border-radius:5px}
+.range{width:100%;accent-color:var(--accent)}.value{font:11px monospace;color:var(--accent);background:#e9f1fe;padding:2px 6px;border-radius:4px}
+.step{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:7px;overflow:hidden}.step button{border:0;background:none;color:var(--muted);width:28px}.step input{width:42px;text-align:center;border:0;background:none;color:var(--text)}
+.media{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.media div{aspect-ratio:1;border-radius:7px;overflow:hidden;border:1px solid var(--line);position:relative}.media img{width:100%;height:100%;object-fit:cover}.media span{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);font-size:8px;padding:3px;text-align:center;color:#fff}.add{display:grid;place-items:center;color:var(--muted);font-size:10px;border-style:dashed!important}
+.toggle{width:38px;height:21px;border-radius:20px;background:var(--panel3);border:1px solid var(--line);padding:2px}.toggle i{display:block;width:15px;height:15px;border-radius:50%;background:#fff;transition:.15s}.toggle.on{background:var(--accent)}.toggle.on i{margin-left:16px}
+.filter{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.filter div{height:55px;border-radius:7px;overflow:hidden;position:relative;border:2px solid transparent}.filter div.on{border-color:var(--accent)}.filter img{width:100%;height:100%;object-fit:cover}.filter span{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);text-align:center;font-size:8px;padding:2px;color:#fff}
+.alert-preview{height:105px;border-radius:8px;background:url('https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=600') center/cover;position:relative;overflow:hidden;margin-bottom:10px}.ticker{position:absolute;bottom:10px;width:100%;background:var(--accent);color:#fff;white-space:nowrap;padding:6px 0;font-size:13px;font-weight:700}.ticker span{display:inline-block;padding-left:100%;animation:marq 7s linear infinite}@keyframes marq{to{transform:translateX(-100%)}}
+.hidden{display:none!important}
+@media(max-width:1100px){.app{grid-template-columns:64px 230px 1fr 290px}.top .sync{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+  <button class="btn" onclick="window.location.href='/'" style="margin-right:4px;">← Back</button>
+  <div class="brand"><i></i>FaithView Pro</div>
+  <div class="theme-title" contenteditable="true">Christ's Heart Church Main — Main Theme</div>
+  <div class="spacer"></div>
+
+  <button class="btn" onclick="exportTheme()">Export Template </button>
+  <button class="btn" onclick="useThemeFromCurrentState()">Use Theme</button>
+  <button class="btn primary" onclick="saveTheme()">Save theme</button>
+</header>
+
+<nav class="rail">
+  <button class="active" data-left="themes" onclick="leftTab(this)">▦<span>Themes</span></button>
+  <button data-left="text" onclick="leftTab(this)">T<span>Text</span></button>
+  <button data-left="scripture" onclick="leftTab(this)">▤<span>Scripture</span></button>
+  <button data-left="background" onclick="leftTab(this)">▧<span>Background</span></button>
+  <button data-left="uploads" onclick="leftTab(this)">↑<span>Uploads</span></button>
+  <div class="sep"></div>
+  <button data-left="alerts" onclick="leftTab(this)">◉<span>Alerts</span></button>
+  <button data-left="brand" onclick="leftTab(this)">✦<span>Brand</span></button>
+</nav>
+
+<aside class="left">
+  <div id="left-themes" class="lp active">
+    <div class="head"><h3>Themes</h3><p>Saved locally and synchronized to the user's FaithView account.</p></div>
+    <div class="section"><button class="btn primary" style="width:100%" onclick="newTheme()">＋ New theme</button></div>
+    <div class="section" id="theme-list"></div>
+    <div class="section"><div class="label">Storage</div><div class="item">☁ Offline / Local Backup Done</div><div class="item">↓ Export/import theme package</div></div>
+  </div>
+
+  <div id="left-text" class="lp"><div class="head"><h3>Text & elements</h3><p>Add movable elements to the projected slide.</p></div><div class="section"><div class="label">Elements</div><div class="item" onclick="addElement('text')">T Heading text</div><div class="item" onclick="addElement('text')">T Body text</div><div class="item" onclick="addElement('logo')">▣ Logo image</div><div class="item" onclick="addElement('copy')">Church name / copyright</div></div></div>
+
+  <div id="left-scripture" class="lp"><div class="head"><h3>Scripture</h3><p>Verse and reference remain independent movable boxes.</p></div><div class="section"><div class="label">Find scripture</div><input id="verseSearch" type="text" placeholder="Genesis 1:1"><select><option>NKJV</option><option>KJV</option><option>ESV</option><option>NIV</option><option>NLT</option></select></div><div class="section"><div class="item" onclick="addElement('verse')">▤ Verse text box</div><div class="item" onclick="addElement('ref')">T Reference box</div></div></div>
+
+  <div id="left-background" class="lp"><div class="head"><h3>Background</h3><p>Choose a solid color, image or video background.</p></div><div class="section"><div class="label">Colors</div><div class="swatches"><button class="swatch" style="background:#2b2470" onclick="setBgColor('#2b2470')"></button><button class="swatch" style="background:#0f3d2e" onclick="setBgColor('#0f3d2e')"></button><button class="swatch" style="background:#3a1414" onclick="setBgColor('#3a1414')"></button><button class="swatch" style="background:#111114" onclick="setBgColor('#111114')"></button><button class="swatch" style="background:#e8a33d" onclick="setBgColor('#e8a33d')"></button></div></div><div class="section"><div class="item" onclick="showRight('background')">Open background editor →</div></div></div>
+
+  <div id="left-uploads" class="lp"><div class="head"><h3>Uploads</h3><p>Media library for logos, backgrounds and video.</p></div><div class="section"><button class="btn primary" style="width:100%" onclick="pickBackgroundImage()">＋ Upload from device</button><input id="fileInput" type="file" accept="image/*,video/*" class="hidden" onchange="handleUpload(this)"></div><div class="section"><div class="media"><div><img src="https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=300"><span>worship.jpg</span></div><div><img src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=300"><span>stage.jpg</span></div><div><img src="https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=300"><span>clouds.jpg</span></div><div class="add" onclick="pickBackgroundImage()">＋ Add media</div></div></div></div>
+
+  <div id="left-alerts" class="lp"><div class="head"><h3>Nursery alerts</h3><p>TV-style scrolling lower-third messages for live services.</p></div><div class="section"><div class="label">Saved styles</div><div class="theme sel"><div class="thumb" style="background:#8b6bff"></div><div>Default ticker<small>Violet · medium</small></div></div><div class="theme"><div class="thumb" style="background:#e0577a"></div><div>Urgent<small>Red · fast · bold</small></div></div></div></div>
+
+  <div id="left-brand" class="lp"><div class="head"><h3>Brand kit</h3><p>Reusable church identity for every theme.</p></div><div class="section"><div class="label">Church name</div><input type="text" value="Christ's Heart Church"></div><div class="section"><div class="label">Brand colors</div><div class="swatches"><button class="swatch" style="background:#8b6bff"></button><button class="swatch" style="background:#e8a33d"></button><button class="swatch" style="background:#fff"></button></div></div></div>
+</aside>
+
+<main class="canvas-wrap">
+  <div id="canvas" class="canvas">
+    <div class="toolbar"><button onclick="alignEl('left')">≡</button><button onclick="alignEl('center')">☷</button><button onclick="alignEl('right')">≡</button><button onclick="duplicateSelected()">⧉</button><button onclick="deleteSelected()">⌫</button></div>
+    <div id="logo" class="element logo" data-type="logo" onclick="selectElement(this,event)"><img class="mark" src="https://images.unsplash.com/photo-1508615039623-a25605d2b022?q=80&w=300" alt="Church logo"><span class="handle nw"></span><span class="handle ne"></span><span class="handle sw"></span><span class="handle se"></span></div>
+    <div id="verse" class="element verse" data-type="verse" onclick="selectElement(this,event)">In the beginning God created the heaven and the earth<span class="handle nw"></span><span class="handle ne"></span><span class="handle sw"></span><span class="handle se"></span></div>
+    <div id="ref" class="element ref" data-type="ref" onclick="selectElement(this,event)">Genesis 1:1 (NKJV)<span class="handle nw"></span><span class="handle ne"></span><span class="handle sw"></span><span class="handle se"></span></div>
+    <div id="copy" class="element copy" data-type="copy" onclick="selectElement(this,event)">Christ's Heart Church<span class="handle nw"></span><span class="handle ne"></span><span class="handle sw"></span><span class="handle se"></span></div>
+    
+  </div>
+</main>
+
+<aside class="right">
+  <div id="rp-empty" class="rp active"><div class="head"><h3>Theme editor</h3><p>Select the verse, reference, copyright, logo or background to edit it.</p></div></div>
+
+  <div id="rp-text" class="rp">
+    <div class="rphead"><div class="badge">T</div><div><h3 id="textTitle">Verse text</h3><p>Selected element</p></div></div>
+    <div class="section"><div class="label">Color</div><div class="swatches"><button class="swatch" style="background:#fff" onclick="setTextColor('#fff')"></button><button class="swatch" style="background:#f1d9a3" onclick="setTextColor('#f1d9a3')"></button><button class="swatch" style="background:#8b6bff" onclick="setTextColor('#8b6bff')"></button><button class="swatch" style="background:#111" onclick="setTextColor('#111')"></button></div><input id="hex" type="text" value="#FFFFFF" oninput="setTextColor(this.value)" style="margin-top:8px"></div>
+    <div class="section"><div class="label">Alignment</div><div class="seg"><button onclick="setAlign('left')">←</button><button class="on" onclick="setAlign('center')">↔</button><button onclick="setAlign('right')">→</button></div></div>
+    <div class="section"><div class="label">Font Type</div><select id="fontFamily" onchange="applyTypography()"><option>Georgia</option><option>Inter</option><option>Arial</option><option>Helvetica</option><option>Montserrat</option><option>Poppins</option><option>Roboto</option><option>Open Sans</option><option>Playfair Display</option><option>Merriweather</option><option>Lora</option><option>Source Serif 4</option><option>Cormorant Garamond</option><option>EB Garamond</option><option>Libre Baskerville</option><option>Raleway</option><option>Nunito</option><option>Work Sans</option></select>
+      <div class="row"><span class="field">Font size</span><div class="step"><button onclick="stepFont(-2)">−</button><input id="fontSize" value="44"><button onclick="stepFont(2)">+</button></div></div>
+      <div class="row"><span class="field">Weight</span><span class="value" id="weightVal">600</span></div><input id="weight" class="range" type="range" min="100" max="900" step="100" value="600" oninput="applyTypography()">
+      <div class="row"><span class="field">Letter spacing</span><span class="value" id="letterVal">0px</span></div><input id="letter" class="range" type="range" min="-2" max="10" value="0" oninput="applyTypography()">
+      <div class="row"><span class="field">Line height</span><span class="value" id="lineVal">1.25</span></div><input id="line" class="range" type="range" min="80" max="220" value="125" oninput="applyTypography()"></div>
+    <div class="section"><div class="label">Content</div><textarea id="content" oninput="applyContent()">In the beginning God created the heaven and the earth</textarea></div>
+  </div>
+
+  <div id="rp-background" class="rp">
+    <div class="rphead"><div class="badge">▧</div><div><h3>Background</h3><p>Color, image or video</p></div></div>
+    <div class="section"><div class="label">Background type</div><div class="seg"><button class="on" onclick="bgMode('color')">Color</button><button onclick="bgMode('image')">Image</button><button onclick="bgMode('video')">Video</button></div></div>
+    <div class="section"><div class="label">Plain color</div><input id="bgHex" type="text" value="#2B2470" oninput="setBgColor(this.value)"><div class="swatches" style="margin-top:8px"><button class="swatch" style="background:#2b2470" onclick="setBgColor('#2b2470')"></button><button class="swatch" style="background:#0f3d2e" onclick="setBgColor('#0f3d2e')"></button><button class="swatch" style="background:#3a1414" onclick="setBgColor('#3a1414')"></button><button class="swatch" style="background:#111114" onclick="setBgColor('#111114')"></button><button class="swatch" style="background:#e8a33d" onclick="setBgColor('#e8a33d')"></button></div></div>
+    <div class="section"><div class="label">Existing media</div><div class="media" id="uploads-panel"></div></div>
+    <div class="section"><div class="label">Fit</div><select><option>Cover / crop</option><option>Contain / letterbox</option><option>Stretch</option></select><div class="row"><span class="field">Scale / zoom</span><span class="value" id="scaleVal">100%</span></div><input class="range" type="range" min="50" max="200" value="100" oninput="scaleVal.textContent=this.value+'%'"><div class="row"><span class="field">Transparency</span><span class="value" id="bgTransVal">100%</span></div><input class="range" type="range" min="0" max="100" value="100" oninput="bgTransVal.textContent=this.value+'%'"></div>
+    <div class="section"><div class="label">Video controls</div><div class="row"><span class="field">Playback speed</span><span class="value" id="speedVal">1.0×</span></div><input class="range" type="range" min="25" max="200" value="100" oninput="speedVal.textContent=(this.value/100).toFixed(1)+'×'"><div class="row"><span class="field">Sound</span><div class="toggle" onclick="this.classList.toggle('on')"><i></i></div></div></div>
+    <div class="section"><div class="label">Filters</div><div class="filter"><div class="on"><img src="https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=150"><span>None</span></div><div style="filter:sepia(.4) saturate(1.5)"><img src="https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=150"><span>Warm</span></div><div style="filter:hue-rotate(160deg)"><img src="https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=150"><span>Cool</span></div><div style="filter:sepia(.5) contrast(.9)"><img src="https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=150"><span>Vintage</span></div><div style="filter:hue-rotate(230deg) saturate(1.6)"><img src="https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=150"><span>Purple</span></div><div style="filter:grayscale(1)"><img src="https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=150"><span>Mono</span></div></div></div>
+  </div>
+
+  <div id="rp-logo" class="rp">
+    <div class="rphead"><div class="badge">▣</div><div><h3>Logo image</h3><p>Independent movable brand element</p></div></div>
+    <div class="section"><div class="label">Logo source</div><div class="media" data-dynamic-media="logo-media"><div><img src="https://images.unsplash.com/photo-1508615039623-a25605d2b022?q=80&w=300"></div><div class="add" onclick="pickLogoImage()">＋ Replace</div></div></div>
+    <div class="section"><div class="label">Size</div><input class="range" type="range" min="24" max="240" value="65" oninput="logo.style.width=this.value+'px';logo.style.height=this.value+'px'"><div class="row"><span class="field">Transparency</span><span class="value" id="logoTrans">100%</span></div><input class="range" type="range" min="0" max="100" value="100" oninput="logo.style.opacity=this.value/100;logoTrans.textContent=this.value+'%'"></div>
+    <div class="section"><div class="field">Drag the selected logo directly on the canvas to position it.</div></div>
+  </div>
+
+  <div id="rp-alerts" class="rp">
+    <div class="rphead"><div class="badge">◉</div><div><h3>Nursery alert</h3><p>Scrolling TV-style lower third</p></div></div>
+    <div class="section"><div class="alert-preview"><div class="ticker"><span>Parents of child #114, please check the nursery&nbsp;&nbsp;&nbsp;&nbsp;Parents of child #114, please check the nursery</span></div></div><textarea id="alertText">Parents of child #114, please check the nursery</textarea></div>
+    <div class="section"><div class="label">Alert Speed</div><div class="row"><span class="field">Scroll speed</span><span class="value" id="alertSpeed">Medium</span></div><input class="range" type="range" min="1" max="10" value="5" oninput="alertSpeed.textContent=['Very slow','Slow','Slow','Medium','Medium','Medium','Fast','Fast','Very fast','Very fast'][this.value-1]"></div>
+    <div class="section"><div class="label">Font Type</div><select><option>Inter</option><option>Montserrat</option><option>Poppins</option><option>Roboto</option><option>Georgia</option></select><div class="row"><span class="field">Size</span><div class="step"><button>−</button><input value="15"><button>+</button></div></div><div class="row"><span class="field">Weight</span><span class="value">700</span></div><input class="range" type="range" min="100" max="900" step="100" value="700"></div>
+    <div class="section"><div class="label">Colors</div><input type="text" value="#FFFFFF"><input type="text" value="#8B6BFF" style="margin-top:7px"></div>
+    <div class="section"><button class="btn primary" style="width:100%" onclick="pushAlertLive()">Push alert live</button></div>
+  </div>
+</aside>
+</div>
+
+<script>
+let selected=null, drag=null, ox=0, oy=0, uploadTarget='background';
+const canvas=document.getElementById('canvas');
+
+function pickLogoImage(){
+  uploadTarget='logo';
+  document.getElementById('fileInput').click();
+}
+
+function pickBackgroundImage(){
+  uploadTarget='background';
+  document.getElementById('fileInput').click();
+}
+
+function setLogoImage(url){
+  const logoEl = document.getElementById('logo') || document.querySelector('.element.logo');
+  if(!logoEl) return;
+  let mark = logoEl.querySelector('.mark');
+  if(!mark){
+    mark = document.createElement('img');
+    mark.className = 'mark';
+    logoEl.prepend(mark);
+  }
+  mark.src = url;
+  mark.alt = 'Church logo';
+}
+
+function leftTab(btn){
+  document.querySelectorAll('.rail button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');
+  document.querySelectorAll('.lp').forEach(x=>x.classList.remove('active'));
+  document.getElementById('left-'+btn.dataset.left).classList.add('active');
+  if(btn.dataset.left==='alerts') showRight('alerts');
+}
+function showRight(which){
+  document.querySelectorAll('.rp').forEach(x=>x.classList.remove('active'));
+  document.getElementById('rp-'+which).classList.add('active');
+}
+function selectElement(el,e){
+  e.stopPropagation(); selected=el;
+  document.querySelectorAll('.element').forEach(x=>x.classList.remove('selected'));el.classList.add('selected');
+  const type=el.dataset.type;
+  if(type==='verse'||type==='ref'||type==='copy'){
+    showRight('text');
+    textTitle.textContent={verse:'Verse text',ref:'Reference',copy:'Copyright / church name'}[type];
+    content.value=el.innerText.replace(/\\s+/g,' ').trim();
+    fontSize.value=parseInt(getComputedStyle(el).fontSize);
+  } else if(type==='logo') showRight('logo');
+}
+canvas.addEventListener('click',e=>{if(e.target===canvas){selected=null;document.querySelectorAll('.element').forEach(x=>x.classList.remove('selected'));showRight('background')}});
+
+document.querySelectorAll('.element').forEach(el=>{
+  el.addEventListener('mousedown',e=>{
+    if(e.target.classList.contains('handle'))return;
+    drag=el;const r=el.getBoundingClientRect();ox=e.clientX-r.left;oy=e.clientY-r.top;e.preventDefault();
+  });
+});
+document.addEventListener('mousemove',e=>{
+  if(!drag)return;const r=canvas.getBoundingClientRect();
+  drag.style.left=Math.max(0,e.clientX-r.left-ox)+'px';drag.style.top=Math.max(0,e.clientY-r.top-oy)+'px';drag.style.right='auto';drag.style.bottom='auto';
+});
+document.addEventListener('mouseup',()=>drag=null);
+
+function setTextColor(c){if(selected){selected.style.color=c;hex.value=c}}
+function setAlign(a){if(selected)selected.style.textAlign=a}
+function stepFont(n){if(!selected)return;let s=Math.max(8,(parseInt(fontSize.value)||44)+n);fontSize.value=s;selected.style.fontSize=s+'px'}
+function applyTypography(){
+ if(!selected)return;
+ selected.style.fontFamily=fontFamily.value;selected.style.fontWeight=weight.value;
+ selected.style.letterSpacing=letter.value+'px';selected.style.lineHeight=(line.value/100).toFixed(2);
+ weightVal.textContent=weight.value;letterVal.textContent=letter.value+'px';lineVal.textContent=(line.value/100).toFixed(2);
+}
+function applyContent(){if(selected)selected.firstChild.nodeValue=content.value}
+function setBgColor(c){canvas.style.backgroundImage='none';canvas.style.backgroundColor=c;bgHex.value=c}
+function setBgImage(url){canvas.style.backgroundImage=`linear-gradient(#08061166,#08061188),url('${url}')`;canvas.style.backgroundColor='transparent'}
+function bgMode(m){if(m==='color')setBgColor(bgHex.value);else if(m==='image')setBgImage('https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=1400');else setBgImage('https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1400')}
+function alignEl(a){if(!selected)return;if(a==='left')selected.style.left='20px';if(a==='center'){selected.style.left='50%';selected.style.transform='translateX(-50%)'}if(a==='right'){selected.style.left='auto';selected.style.right='20px'}}
+function duplicateSelected(){if(!selected)return;let n=selected.cloneNode(true);n.id='clone'+Date.now();n.style.left=(parseInt(selected.offsetLeft)+20)+'px';n.style.top=(parseInt(selected.offsetTop)+20)+'px';n.classList.remove('selected');canvas.appendChild(n);selectElement(n,{stopPropagation(){}})}
+function deleteSelected(){if(selected){selected.remove();selected=null;showRight('empty')}}
+function addElement(type){
+ let n=document.createElement('div');n.className='element';n.dataset.type=type;n.style.left='30%';n.style.top='35%';
+ n.innerHTML=(type==='verse'?'New verse text':type==='ref'?'Genesis 1:1 (NKJV)':type==='copy'?"Church name":'New text')+'<span class="handle nw"></span><span class="handle ne"></span><span class="handle sw"></span><span class="handle se"></span>';
+ if(type==='verse')n.classList.add('verse');if(type==='ref')n.classList.add('ref');if(type==='copy')n.classList.add('copy');canvas.appendChild(n);
+ n.onclick=e=>selectElement(n,e);n.onmousedown=e=>{if(e.target.classList.contains('handle'))return;drag=n;const r=n.getBoundingClientRect();ox=e.clientX-r.left;oy=e.clientY-r.top;e.preventDefault()};selectElement(n,{stopPropagation(){}});
+}
+function newTheme(){document.querySelector('.theme-title').textContent='New Theme';alert('New theme created')}
+function saveTheme(){
+  // capture a theme snapshot
+  function captureThemeState(){
+    return { id: null, name: document.querySelector('.theme-title').textContent.trim(), background: { color: canvas.style.backgroundColor, image: canvas.style.backgroundImage }, elements: [...canvas.querySelectorAll('.element')].map(e=>({ type: e.dataset.type, text: (e.innerText||'').trim(), style: e.getAttribute('style')||'', className: e.className })) };
+  }
+
+  function ts(){ return new Date().toISOString(); }
+
+  function getThemeList(){ try{ return JSON.parse(localStorage.getItem('faithview-themes')||'[]') }catch(e){ return [] } }
+  function setThemeList(list){ localStorage.setItem('faithview-themes', JSON.stringify(list)); }
+  function setActiveTheme(t){ localStorage.setItem('faithview-active-theme', JSON.stringify(t)); }
+
+  const current = captureThemeState();
+  let name = (current.name||'').trim();
+  name = prompt('Save theme as (name):', name || 'My Theme');
+  if(!name){ alert('Save cancelled'); return; }
+  current.name = name.trim();
+  const themes = getThemeList();
+  const dup = themes.find(t => (t.name||'').toLowerCase() === current.name.toLowerCase());
+  if(dup && dup.id !== current.id){
+    if(!confirm('A theme named "'+ current.name +'" already exists. Overwrite?')) return;
+    current.id = dup.id;
+    const idx = themes.findIndex(t=>t.id===dup.id);
+    themes[idx] = Object.assign({}, current, { updatedAt: ts() });
+  } else {
+    current.id = current.id || ('theme-'+Date.now());
+    themes.unshift(Object.assign({}, current, { updatedAt: ts() }));
+  }
+  setThemeList(themes);
+  setActiveTheme(current);
+  document.querySelector('.theme-title').textContent = current.name;
+  // Also publish the theme live so the main display updates immediately
+  try{
+    // representative text/reference
+    const verseEl = current.elements.find(e=>e.type==='verse');
+    const refEl = current.elements.find(e=>e.type==='ref');
+    const text = verseEl ? verseEl.text : (current.elements.find(e=>e.type==='copy')||{text:''}).text;
+    const reference = refEl ? refEl.text : '';
+    fetch('/present-theme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ theme: Object.assign({}, current, { reference, text }) }) })
+      .then(r=>{ if(!r.ok) throw new Error('present-theme failed'); return r.json(); })
+      .then(()=> {
+        // ensure other windows see the active theme
+        try{ localStorage.setItem('faithview-active-theme', JSON.stringify(current)); }catch(e){}
+        alert('Theme "'+current.name+'" saved locally and published to live output.');
+      })
+      .catch(e=>{
+        console.warn('present-theme error', e);
+        alert('Theme saved locally but failed to publish live: '+e);
+      });
+  }catch(e){
+    alert('Theme "'+current.name+'" saved locally.');
+  }
+}
+
+function exportTheme(){
+  const active = localStorage.getItem('faithview-active-theme') || JSON.stringify({ name: document.querySelector('.theme-title').textContent.trim() });
+  const blob = new Blob([active], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'faithview-theme-' + (new Date().toISOString().replace(/[:.]/g,'-')) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function useThemeFromCurrentState(){
+  // capture minimal theme representation and set active
+  const theme = { id: 'theme-'+Date.now(), name: document.querySelector('.theme-title').textContent.trim(), background: { color: canvas.style.backgroundColor, image: canvas.style.backgroundImage }, elements: [...canvas.querySelectorAll('.element')].map(e=>({ type: e.dataset.type, text: (e.innerText||'').trim(), style: e.getAttribute('style')||'' })) };
+  try{ localStorage.setItem('faithview-active-theme', JSON.stringify(theme)); }catch(e){}
+  // also POST a representative display to server so projector updates
+  const verseEl = theme.elements.find(e=>e.type==='verse');
+  const refEl = theme.elements.find(e=>e.type==='ref');
+  const text = verseEl ? verseEl.text : (theme.elements.find(e=>e.type==='copy')||{text:''}).text;
+  const reference = refEl ? refEl.text : '';
+  fetch('/present', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ reference, translation: '', text }) })
+    .then(r=>{ if(!r.ok) throw new Error('present failed'); return r.json(); })
+    .then(()=> alert('Theme applied to live output'))
+    .catch(e=> alert('Failed to apply theme live: '+e));
+}
+
+function handleUpload(input){
+  const f=input.files[0];if(!f)return;
+  if(f.type.startsWith('image/')){
+    const u=URL.createObjectURL(f);
+    if(uploadTarget==='logo'){
+      setLogoImage(u);
+      showRight('logo');
+    } else {
+      setBgImage(u);
+      showRight('background');
+    }
+    // persist uploaded media metadata (using object URL as quick dev storage)
+    try{
+      const items = JSON.parse(localStorage.getItem('faithview-uploaded-media')||'[]');
+      items.unshift({ id: 'm-'+Date.now(), name: f.name, type: f.type, url: u, createdAt: new Date().toISOString() });
+      localStorage.setItem('faithview-uploaded-media', JSON.stringify(items));
+    }catch(e){}
+  } else if(f.type.startsWith('video/')) alert('Video selected. Production implementation should store the media asset and bind it to the background video layer.');
+}
+
+function addElement(type){
+ let n=document.createElement('div');n.className='element';n.dataset.type=type;n.style.left='30%';n.style.top='35%';
+ if(type==='logo'){
+   n.classList.add('logo');
+   n.innerHTML='<img class="mark" src="https://images.unsplash.com/photo-1508615039623-a25605d2b022?q=80&w=300" alt="Church logo"><span class="handle nw"></span><span class="handle ne"></span><span class="handle sw"></span><span class="handle se"></span>';
+ } else {
+   n.innerHTML=(type==='verse'?'New verse text':type==='ref'?'Genesis 1:1 (NKJV)':type==='copy'?'Church name':'New text')+'<span class="handle nw"></span><span class="handle ne"></span><span class="handle sw"></span><span class="handle se"></span>';
+ }
+ if(type==='verse')n.classList.add('verse');if(type==='ref')n.classList.add('ref');if(type==='copy')n.classList.add('copy');canvas.appendChild(n);
+ n.onclick=e=>selectElement(n,e);n.onmousedown=e=>{if(e.target.classList.contains('handle'))return;drag=n;const r=n.getBoundingClientRect();ox=e.clientX-r.left;oy=e.clientY-r.top;e.preventDefault()};selectElement(n,{stopPropagation(){}});
+}
+
+selectElement(document.getElementById('verse'),{stopPropagation(){}});
+
+// render uploads panel from localStorage
+function renderUploads(){
+  const panel = document.getElementById('uploads-panel');
+  if(!panel) return;
+  let items = [];
+  try{ items = JSON.parse(localStorage.getItem('faithview-uploaded-media')||'[]'); }catch(e){}
+  panel.innerHTML = '';
+  items.slice(0,12).forEach(it => {
+    const d = document.createElement('div');
+    d.innerHTML = `<img src="${it.url}"><span>${it.name}</span>`;
+    d.onclick = ()=>{ if(it.type.startsWith('image/')) setBgImage(it.url); else alert('Video asset selected'); };
+    panel.appendChild(d);
+  });
+  const add = document.createElement('div'); add.className='add'; add.textContent='＋ From PC'; add.onclick = ()=>document.getElementById('fileInput').click(); panel.appendChild(add);
+}
+renderUploads();
+
+// ---- Saved themes list ----
+function getThemeList(){ try{ return JSON.parse(localStorage.getItem('faithview-themes')||'[]') }catch(e){ return [] } }
+function setThemeList(list){ localStorage.setItem('faithview-themes', JSON.stringify(list)); }
+
+function renderThemeList(){
+  const list = document.getElementById('theme-list');
+  if(!list) return;
+  const themes = getThemeList();
+  list.innerHTML = '';
+  if(!themes.length){
+    list.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px;text-align:center">No saved themes yet</div>';
+    return;
+  }
+  themes.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'theme';
+    card.style.cursor = 'pointer';
+    const bg = (t.background && t.background.color) || '#2b2470';
+    const bgStyle = bg.startsWith('rgb') || bg.startsWith('#') ? `background:${bg}` : `background:#2b2470`;
+    const verseEl = (t.elements||[]).find(e=>e.type==='verse');
+    const verseText = verseEl ? (verseEl.text||'').substring(0,40) : 'No verse';
+    const updated = t.updatedAt ? new Date(t.updatedAt).toLocaleDateString() : '';
+    card.innerHTML = `<div class="thumb" style="${bgStyle}"></div><div>${escapeHtml(t.name||'Untitled')}<small>${escapeHtml(verseText)}… ${updated}</small></div>`;
+    // Click to load theme into canvas
+    card.onclick = () => loadSavedTheme(t);
+    list.appendChild(card);
+  });
+}
+
+function loadSavedTheme(t){
+  if(!t) return;
+  // Set title
+  document.querySelector('.theme-title').textContent = t.name || 'Untitled';
+  // Set background
+  if(t.background){
+    if(t.background.image && t.background.image !== 'none'){
+      canvas.style.backgroundImage = t.background.image;
+      canvas.style.backgroundColor = 'transparent';
+    } else if(t.background.color){
+      canvas.style.backgroundImage = 'none';
+      canvas.style.backgroundColor = t.background.color;
+    }
+  }
+  // Remove old elements
+  canvas.querySelectorAll('.element').forEach(e => e.remove());
+  // Recreate elements
+  (t.elements||[]).forEach(elData => {
+    const n = document.createElement('div');
+    n.className = 'element';
+    n.dataset.type = elData.type;
+    if(elData.type === 'logo'){
+      n.classList.add('logo');
+      n.innerHTML = '<div class="mark" style="background:#e8a33d;color:#1a1200;font-weight:800;font-size:23px;display:flex;align-items:center;justify-content:center;border-radius:12px">' + escapeHtml(elData.text||'CH') + '</div><span class="handle nw"></span><span class="handle ne"></span><span class="handle sw"></span><span class="handle se"></span>';
+    } else {
+      n.innerHTML = escapeHtml(elData.text||'') + '<span class="handle nw"></span><span class="handle ne"></span><span class="handle sw"></span><span class="handle se"></span>';
+      if(elData.type==='verse') n.classList.add('verse');
+      if(elData.type==='ref') n.classList.add('ref');
+      if(elData.type==='copy') n.classList.add('copy');
+    }
+    // Apply saved inline style
+    if(elData.style) n.style.cssText = elData.style;
+    canvas.appendChild(n);
+    // Rebind events
+    n.onclick = e => selectElement(n, e);
+    n.onmousedown = e => {
+      if(e.target.classList.contains('handle')) return;
+      drag = n; const r = n.getBoundingClientRect(); ox = e.clientX-r.left; oy = e.clientY-r.top; e.preventDefault();
+    };
+  });
+  toast('Loaded "' + (t.name||'Untitled') + '"');
+  // Show themes panel
+  leftTab(document.querySelector('[data-left="themes"]'));
+}
+
+function useSavedTheme(t){
+  if(!t) return;
+  // Capture verse/ref text and POST to /present-theme
+  const verseEl = (t.elements||[]).find(e=>e.type==='verse');
+  const refEl = (t.elements||[]).find(e=>e.type==='ref');
+  const text = verseEl ? verseEl.text : '';
+  const reference = refEl ? refEl.text : '';
+  fetch('/present-theme', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ theme: Object.assign({}, t, {reference, text}) })
+  }).then(r=>r.json()).then(d=>{
+    if(d.ok) toast('Theme sent to live output');
+    else toast('Failed to push theme');
+  }).catch(e=> toast('Error: '+e));
+}
+
+function deleteSavedTheme(id){
+  if(!confirm('Delete this theme?')) return;
+  let themes = getThemeList();
+  themes = themes.filter(t => t.id !== id);
+  setThemeList(themes);
+  renderThemeList();
+  toast('Theme deleted');
+}
+
+// Override saveTheme to also refresh the list
+const _origSaveTheme = saveTheme;
+// We patch the list render into the existing flow by calling renderThemeList after save
+// The simplest way: call renderThemeList on every save via MutationObserver on theme-list parent
+// Actually, just re-render after the save prompt returns. Since saveTheme uses alerts,
+// we add a small interval check. Better: just call renderThemeList at the end.
+// We'll add it to saveTheme by wrapping it:
+const origSaveThemeStr = saveTheme.toString();
+saveTheme = function(){
+  _origSaveTheme();
+  setTimeout(renderThemeList, 500);
+};
+
+// Escape HTML helper (reuse from above)
+function escapeHtml(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Toast helper
+function toast(msg){
+  let el = document.getElementById('tm-toast');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'tm-toast';
+    el.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#12233a;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:600;z-index:999;transition:opacity .3s;opacity:0;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(el._timer);
+  el._timer = setTimeout(()=>{ el.style.opacity = '0'; }, 2000);
+}
+
+// Initial render
+renderThemeList();
+</script>
+</body>
+</html>
