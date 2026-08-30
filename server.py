@@ -648,16 +648,14 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
             "verses": result,
         }
 
-    # --- serve the frontend (Milestone 5) ---
+    # --- serve the frontend ---
     def _serve_frontend(relative_path: str):
-        """Serve a file from frontend/ first, fall back to static/."""
-        # Try new frontend directory first
-        path = os.path.join(frontend_dir, relative_path)
+        """Serve a file from static/ first, fall back to frontend/."""
+        path = os.path.join(legacy_static, relative_path)
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as fh:
                 return HTMLResponse(fh.read())
-        # Fall back to legacy static directory
-        path = os.path.join(legacy_static, relative_path)
+        path = os.path.join(frontend_dir, relative_path)
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as fh:
                 return HTMLResponse(fh.read())
