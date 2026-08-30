@@ -28,8 +28,11 @@ from typing import Optional
 
 # Add the parent directory to sys.path so we can import backend modules
 _HERE = Path(__file__).resolve().parent
+_PROJECT_ROOT = _HERE.parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 # IMPORTANT: import web stack BEFORE runtime modules (see server.py note)
 import uvicorn

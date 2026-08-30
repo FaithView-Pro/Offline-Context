@@ -46,3 +46,6 @@ quote_classifier_model/
 quote_classifier_model_checkpoints/
 win_cli_search/index/
 *.exe
+node_modules/
+*.png
+*.jpeg

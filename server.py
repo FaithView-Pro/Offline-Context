@@ -286,6 +286,10 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
     app = FastAPI(title="FaithView Pro live operator console")
 
     # Mount frontend JS/CSS assets for static serving
+    here_static = os.path.dirname(os.path.abspath(__file__))
+    frontend_dir = os.path.join(here_static, "frontend")
+    legacy_static = os.path.join(here_static, "static")
+
     from fastapi.staticfiles import StaticFiles
     if os.path.isdir(frontend_dir):
         app.mount("/js", StaticFiles(directory=os.path.join(frontend_dir, "js")), name="frontend-js")
@@ -500,14 +504,14 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
     @app.get("/ready")
     async def ready():
         """Simple readiness probe — returns 200 when backend is fully loaded."""
-        if STATE.pipeline and STATE.pipeline._resources_loaded:
+        if STATE.pipeline and (STATE.pipeline._db is not None or STATE.pipeline._retriever is not None):
             return {"ready": True}
         return JSONResponse({"ready": False, "state": "loading"}, status_code=503)
 
     @app.get("/status")
     async def status():
         """Detailed status for the Tauri sidecar."""
-        return health()
+        return await health()
 
     @app.get("/audio/devices")
     async def audio_devices():
@@ -645,10 +649,6 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
         }
 
     # --- serve the frontend (Milestone 5) ---
-    here_static = os.path.dirname(os.path.abspath(__file__))
-    frontend_dir = os.path.join(here_static, "frontend")
-    legacy_static = os.path.join(here_static, "static")
-
     def _serve_frontend(relative_path: str):
         """Serve a file from frontend/ first, fall back to static/."""
         # Try new frontend directory first

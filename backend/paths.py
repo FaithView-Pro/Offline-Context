@@ -62,47 +62,56 @@ class Paths:
         """Root directory for bundled resources (bible, models, index)."""
         if _is_frozen():
             return self._bundle
-        return self._dev_root
+        # In dev mode, resources are in the project root (parent of backend/)
+        return self._dev_root.parent
 
     @property
     def bible_dir(self) -> Path:
-        return self.resource_root / "resources" / "bible"
+        p = self.resource_root / "resources" / "bible"
+        if p.exists():
+            return p
+        return self.resource_root
 
     @property
     def bible_all_versions(self) -> Path:
-        # In dev mode, may be at project root
-        p = self.resource_root / "resources" / "bible" / "bible_all_versions.json"
-        if p.exists():
-            return p
-        return self._dev_root / "bible_all_versions.json"
+        # Check project root first, then versions/ subdirectory, then resources/
+        for candidate in [
+            self.resource_root / "bible_all_versions.json",
+            self.resource_root / "versions" / "bible_all_versions.json",
+            self.resource_root / "resources" / "bible" / "bible_all_versions.json",
+        ]:
+            if candidate.exists():
+                return candidate
+        return self.resource_root / "bible_all_versions.json"
 
     @property
     def nkjv_json(self) -> Path:
-        p = self.resource_root / "resources" / "bible" / "nkjv.json"
+        p = self.resource_root / "nkjv.json"
         if p.exists():
             return p
-        return self._dev_root / "nkjv.json"
+        return self.resource_root / "resources" / "bible" / "nkjv.json"
 
     @property
     def amplified_json(self) -> Path:
-        p = self.resource_root / "resources" / "bible" / "amplified.json"
+        p = self.resource_root / "amplified.json"
         if p.exists():
             return p
-        return self._dev_root / "amplified.json"
+        return self.resource_root / "resources" / "bible" / "amplified.json"
 
     @property
     def onnx_dir(self) -> Path:
-        p = self.resource_root / "resources" / "onnx" / "model.onnx"
-        if p.exists():
-            return self.resource_root / "resources" / "onnx"
-        return self._dev_root / "onnx_model"
+        # Check project root first, then resources subdirectory
+        p = self.resource_root / "onnx_model"
+        if (p / "model.onnx").exists():
+            return p
+        return self.resource_root / "resources" / "onnx"
 
     @property
     def onnx_model(self) -> Path:
         p = self.onnx_dir / "model.onnx"
         if p.exists():
             return p
-        return self._dev_root / "onnx_model" / "model.onnx"
+        return self.resource_root / "onnx_model" / "model.onnx"
 
     @property
     def onnx_tokenizer(self) -> Path:
@@ -110,10 +119,11 @@ class Paths:
 
     @property
     def index_dir(self) -> Path:
-        p = self.resource_root / "resources" / "index"
+        # Check project root first, then resources subdirectory
+        p = self.resource_root / "index"
         if (p / "verses.faiss").exists():
             return p
-        return self._dev_root / "index"
+        return self.resource_root / "resources" / "index"
 
     @property
     def faiss_index(self) -> Path:
