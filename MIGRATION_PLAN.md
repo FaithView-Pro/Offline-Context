@@ -111,3 +111,47 @@ POST /mode                  {mode: "autopilot"|"semi_autopilot"|"manual"}
 - Created `frontend/js/display.js` — output window management (DisplayManager)
 - Created `frontend/index.html` — startup screen with progress indicators
 - Tauri integration: reads port from sidecar, invokes window commands
+
+### Phase 4 — Server Integration ✓
+- Updated `server.py` with enhanced `/health` endpoint (model status, audio state, transcription)
+- Added `/ready` endpoint for readiness probes
+- Added `/status` endpoint for detailed sidecar status
+- Added `/audio/devices` endpoint for input device enumeration
+- Dynamic port binding (`--port 0` for auto-select)
+- Frontend serving: `frontend/` directory takes priority, falls back to `static/`
+- JS module mounting: `/js/` serves from `frontend/js/`
+- Added `--device` flag for audio device selection
+- Added `audio_device` tracking in AppState
+
+### Remaining Phases
+
+#### Phase 5 — PyInstaller Build + Test
+- Run `pyinstaller faithview_sidecar.spec` to verify bundle works
+- Test the sidecar standalone: `python backend/sidecar.py --port 0 --audio none`
+- Verify `/health` returns correct model status
+- Test Windows + macOS builds on target platforms
+
+#### Phase 6 — Tauri Build + Integration Test
+- Install Rust toolchain on build machine
+- Run `cd desktop && npm install && npm run tauri build`
+- Test the full stack: Tauri launches sidecar → connects to port → opens windows
+- Verify output window shows projector display
+- Test system tray menu (Show, Show Output, Restart Engine, Quit)
+- Verify restart command kills and relaunches sidecar
+
+#### Phase 7 — Theme Migration
+- Export/import themes from localStorage (dev) to user data dir (desktop)
+- Create `themes.json` in user data directory
+- Both standalone and settings theme managers must use same persistence layer
+
+#### Phase 8 — Installer + Distribution
+- Windows: NSIS installer or WiX (via Tauri bundler)
+- macOS: DMG with code signing
+- Bundle Python sidecar + ONNX model + FAISS index + Bible JSON
+- Target size: ~300-500MB (ML dependencies + data)
+
+## Current Status
+
+**Completed**: Phases 1-4 (Tauri shell, Python sidecar, frontend modules, server integration)
+**Blocked**: Rust toolchain not installed — cannot compile Tauri app
+**Next**: Phase 5 (PyInstaller build test) can proceed without Rust

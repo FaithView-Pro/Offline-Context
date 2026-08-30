@@ -96,6 +96,7 @@ class AppState:
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.audio_source_kind = "mic"      # "mic" | "file" | "none"
         self.audio_file: Optional[str] = None
+        self.audio_device: Optional[int] = None  # audio device ID (None = default)
         self.source = None
         self.audio_thread: Optional[threading.Thread] = None
         self.audio_stop = threading.Event()
@@ -283,6 +284,14 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
     STATE.mode = pipeline_kwargs.pop("mode", STATE.mode)
 
     app = FastAPI(title="FaithView Pro live operator console")
+
+    # Mount frontend JS/CSS assets for static serving
+    from fastapi.staticfiles import StaticFiles
+    if os.path.isdir(frontend_dir):
+        app.mount("/js", StaticFiles(directory=os.path.join(frontend_dir, "js")), name="frontend-js")
+    if os.path.isdir(legacy_static):
+        app.mount("/static", StaticFiles(directory=legacy_static), name="legacy-static")
+
     STATE.init_pipeline(**pipeline_kwargs)
 
     # --- lifecycle: start the live pipeline once the event loop is up ---
@@ -460,10 +469,64 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
 
     @app.get("/health")
     async def health():
-        return {"ok": True, "audio": STATE.audio_source_kind,
-                "floor": STATE.pipeline.live_confidence_floor if STATE.pipeline else LIVE_CONFIDENCE_FLOOR,
-                "source": STATE.transcription_source,
-                "mode": STATE.mode}
+        """Health check endpoint for Tauri sidecar polling and general readiness."""
+        pipeline_ready = STATE.pipeline is not None and (
+            STATE.pipeline._db is not None or STATE.pipeline._retriever is not None
+        )
+        return {
+            "ok": True,
+            "status": "ready" if pipeline_ready else "loading",
+            "audio": STATE.audio_source_kind,
+            "floor": STATE.pipeline.live_confidence_floor if STATE.pipeline else LIVE_CONFIDENCE_FLOOR,
+            "source": STATE.transcription_source,
+            "mode": STATE.mode,
+            "models_loaded": pipeline_ready,
+            "models": {
+                "bible_db": "ready" if pipeline_ready and STATE.pipeline._db is not None else "loading",
+                "quote_detector": "ready" if pipeline_ready and STATE.pipeline._detector is not None else "loading",
+                "faiss": "ready" if pipeline_ready and STATE.pipeline._retriever is not None else "loading",
+                "embedding": "ready" if pipeline_ready and STATE.pipeline._retriever is not None else "loading",
+            },
+            "audio_state": {
+                "device": STATE.audio_device,
+                "capturing": STATE.started,
+            },
+            "transcription": {
+                "engine": STATE.transcription_source,
+                "running": STATE.started,
+            },
+        }
+
+    @app.get("/ready")
+    async def ready():
+        """Simple readiness probe — returns 200 when backend is fully loaded."""
+        if STATE.pipeline and STATE.pipeline._resources_loaded:
+            return {"ready": True}
+        return JSONResponse({"ready": False, "state": "loading"}, status_code=503)
+
+    @app.get("/status")
+    async def status():
+        """Detailed status for the Tauri sidecar."""
+        return health()
+
+    @app.get("/audio/devices")
+    async def audio_devices():
+        """List available audio input devices."""
+        try:
+            import sounddevice as sd
+            devices = sd.query_devices()
+            inputs = []
+            for i, d in enumerate(devices):
+                if d.get('max_input_channels', 0) > 0:
+                    inputs.append({
+                        "id": i,
+                        "name": d['name'],
+                        "channels": d.get('max_input_channels', 0),
+                        "sample_rate": d.get('default_samplerate', 44100),
+                    })
+            return {"devices": inputs, "default": None}
+        except Exception as exc:
+            return JSONResponse({"error": f"audio device query failed: {exc}"}, status_code=500)
 
     # ---- Transcription source switching (Task 1) --------------------------
     @app.post("/transcription-source")
@@ -583,38 +646,38 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
 
     # --- serve the frontend (Milestone 5) ---
     here_static = os.path.dirname(os.path.abspath(__file__))
+    frontend_dir = os.path.join(here_static, "frontend")
+    legacy_static = os.path.join(here_static, "static")
+
+    def _serve_frontend(relative_path: str):
+        """Serve a file from frontend/ first, fall back to static/."""
+        # Try new frontend directory first
+        path = os.path.join(frontend_dir, relative_path)
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as fh:
+                return HTMLResponse(fh.read())
+        # Fall back to legacy static directory
+        path = os.path.join(legacy_static, relative_path)
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as fh:
+                return HTMLResponse(fh.read())
+        return HTMLResponse(f"<h1>FaithView Pro</h1><p>{relative_path} not found.</p>")
 
     @app.get("/", response_class=HTMLResponse)
     async def root():
-        path = os.path.join(here_static, "static", "index.html")
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as fh:
-                return HTMLResponse(fh.read())
-        return HTMLResponse("<h1>FaithView Pro</h1><p>static/index.html not found.</p>")
+        return _serve_frontend("index.html")
 
     @app.get("/output.html", response_class=HTMLResponse)
     async def output_page():
-        path = os.path.join(here_static, "static", "output.html")
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as fh:
-                return HTMLResponse(fh.read())
-        return HTMLResponse("<h1>FaithView Pro</h1><p>output.html not found.</p>")
+        return _serve_frontend("output.html")
 
     @app.get("/settings.html", response_class=HTMLResponse)
     async def settings_page():
-        path = os.path.join(here_static, "static", "settings.html")
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as fh:
-                return HTMLResponse(fh.read())
-        return HTMLResponse("<h1>FaithView Pro</h1><p>settings.html not found.</p>")
+        return _serve_frontend("settings.html")
 
     @app.get("/themes.html", response_class=HTMLResponse)
     async def themes_page():
-        path = os.path.join(here_static, "static", "faithview_theme_manager_mockup.html")
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as fh:
-                return HTMLResponse(fh.read())
-        return HTMLResponse("<h1>FaithView Pro</h1><p>theme manager not found.</p>")
+        return _serve_frontend("faithview_theme_manager_mockup.html")
 
     # --- clear detections endpoint ---
     @app.post("/detections/clear")
@@ -629,9 +692,11 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
 # ===========================================================================
 def main():
     import argparse
+    import socket
     ap = argparse.ArgumentParser(description="FaithView Pro live server (offline).")
     ap.add_argument("--host", default="127.0.0.1")
-    ap.add_argument("--port", type=int, default=8000)
+    ap.add_argument("--port", type=int, default=0,
+                    help="Port to bind (0 = auto-select an available port)")
     ap.add_argument("--model", default=config.WHISPER_MODEL, help="faster-whisper model id "
                     "(default 'small.en': measured ~3.65s on 10s tile on CPU, paired with "
                     "widened 8s window for safe real-time margin)")
@@ -663,7 +728,11 @@ def main():
                     help="transcription source (default 'whisper')")
     ap.add_argument("--mode", default="semi_autopilot", choices=["autopilot", "semi_autopilot", "manual"],
                     help="operator mode (default 'semi_autopilot')")
+    ap.add_argument("--device", type=int, default=None,
+                    help="audio device ID (default: system default input)")
     args = ap.parse_args()
+
+    STATE.audio_device = args.device
 
     pipeline_kwargs = dict(
         whisper_model=args.model,
@@ -685,10 +754,19 @@ def main():
     )
     app = create_app(**pipeline_kwargs)
 
-    print(f"[server] FaithView Pro live console at http://{args.host}:{args.port}")
+    # Resolve dynamic port (port 0 = auto-select)
+    host = args.host
+    port = args.port
+    if port == 0:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((host, 0))
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            port = s.getsockname()[1]
+
+    print(f"[server] FaithView Pro live console at http://{host}:{port}")
     print(f"[server] audio={args.audio} model={args.model} detector={args.detector} "
           f"floor={args.floor}  (batch REVIEW_THRESHOLD=0.60; live broadcasts >= {args.floor})")
-    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    uvicorn.run(app, host=host, port=port, log_level="info")
 
 
 if __name__ == "__main__":
