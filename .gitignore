@@ -49,3 +49,5 @@ win_cli_search/index/
 node_modules/
 *.png
 *.jpeg
+target/
+gen/
