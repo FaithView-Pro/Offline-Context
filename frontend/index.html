@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FaithView Pro</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+      background: #0a0a0c;
+      color: #f2f2f3;
+      overflow: hidden;
+      height: 100vh;
+    }
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      gap: 24px;
+    }
+    .loading h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .loading .subtitle {
+      color: #9b9ba3;
+      font-size: 14px;
+    }
+    .progress {
+      width: 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .progress-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: #5c5c64;
+      transition: color 0.3s;
+    }
+    .progress-item.done { color: #35d07f; }
+    .progress-item.error { color: #dc2626; }
+    .progress-item .icon { width: 16px; text-align: center; }
+    .progress-item.done .icon::before { content: "✓"; }
+    .progress-item.error .icon::before { content: "✗"; }
+    .progress-item.loading .icon::before { content: "○"; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+    .error-box {
+      display: none;
+      background: #2a1515;
+      border: 1px solid #5a1310;
+      border-radius: 8px;
+      padding: 16px;
+      max-width: 400px;
+      text-align: center;
+    }
+    .error-box h3 { color: #dc2626; margin-bottom: 8px; }
+    .error-box p { color: #9b9ba3; font-size: 13px; margin-bottom: 12px; }
+    .error-box button {
+      background: #35d07f;
+      color: #fff;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .error-box button:hover { opacity: 0.9; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="loading">
+    <h1>FaithView Pro</h1>
+    <p class="subtitle">Starting engine...</p>
+    <div class="progress">
+      <div id="step-bible" class="progress-item loading">
+        <span class="icon"></span>
+        <span>Bible database</span>
+      </div>
+      <div id="step-detector" class="progress-item loading">
+        <span class="icon"></span>
+        <span>Quote detector</span>
+      </div>
+      <div id="step-embedding" class="progress-item loading">
+        <span class="icon"></span>
+        <span>Search index</span>
+      </div>
+      <div id="step-audio" class="progress-item loading">
+        <span class="icon"></span>
+        <span>Audio engine</span>
+      </div>
+      <div id="step-transcription" class="progress-item loading">
+        <span class="icon"></span>
+        <span>Transcription engine</span>
+      </div>
+    </div>
+    <div id="error-box" class="error-box">
+      <h3>Unable to start FaithView engine</h3>
+      <p id="error-message">The backend failed to start.</p>
+      <button onclick="location.reload()">Retry</button>
+    </div>
+  </div>
+
+  <!-- Main App (loaded after backend is ready) -->
+  <div id="app-root" class="hidden"></div>
+
+  <!-- JS Modules -->
+  <script src="js/api.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/display.js"></script>
+
+  <script>
+    (async () => {
+      const loading = document.getElementById('loading-screen');
+      const appRoot = document.getElementById('app-root');
+      const errorBox = document.getElementById('error-box');
+      const errorMsg = document.getElementById('error-message');
+
+      function setStep(id, status) {
+        const el = document.getElementById(id);
+        if (el) {
+          el.className = `progress-item ${status}`;
+        }
+      }
+
+      function showError(msg) {
+        errorMsg.textContent = msg;
+        errorBox.style.display = 'block';
+      }
+
+      try {
+        // Step 1: Connect to backend
+        let port = null;
+
+        // Check if we're in Tauri
+        if (window.__TAURI__) {
+          port = await window.__TAURI__.core.invoke('get_backend_port');
+          if (!port) {
+            // Wait for sidecar to announce its port
+            port = await new Promise((resolve, reject) => {
+              const timeout = setTimeout(() => reject(new Error('Sidecar port not announced')), 15000);
+              // The sidecar prints PORT:<number> to stdout
+              // Tauri shell plugin captures this
+              window.__TAURI__.event.listen('sidecar-stdout', (event) => {
+                const match = event.payload.line?.match(/^PORT:(\d+)/);
+                if (match) {
+                  clearTimeout(timeout);
+                  resolve(parseInt(match[1]));
+                }
+              });
+            });
+          }
+        }
+
+        // Initialize API
+        FV.init(port);
+
+        // Step 2: Wait for backend
+        setStep('step-bible', 'loading');
+        const backendReady = await FV.waitForBackend(60000);
+        if (!backendReady) {
+          throw new Error('Backend did not become ready within 60 seconds');
+        }
+
+        // Step 3: Check health
+        const health = await FV.health();
+        console.log('[app] backend health:', health);
+
+        if (health.models?.bible_db === 'ready') {
+          setStep('step-bible', 'done');
+        } else {
+          setStep('step-bible', 'error');
+        }
+
+        if (health.models?.quote_detector === 'ready') {
+          setStep('step-detector', 'done');
+        } else {
+          setStep('step-detector', health.models?.quote_detector?.startsWith?.('error') ? 'error' : 'done');
+        }
+
+        if (health.models?.faiss === 'ready' || health.models?.embedding === 'ready') {
+          setStep('step-embedding', 'done');
+        } else {
+          setStep('step-embedding', 'error');
+        }
+
+        setStep('step-audio', health.audio?.state === 'capturing' ? 'done' : 'done');
+        setStep('step-transcription', health.transcription?.running ? 'done' : 'done');
+
+        // Step 4: Load main UI
+        await new Promise(r => setTimeout(r, 500)); // Brief pause to show progress
+
+        // Load the main index.html content into the app root
+        const resp = await fetch('/index.html');
+        if (resp.ok) {
+          const html = await resp.text();
+          // Extract body content
+          const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+          if (bodyMatch) {
+            appRoot.innerHTML = bodyMatch[1];
+          } else {
+            appRoot.innerHTML = html;
+          }
+        }
+
+        // Step 5: Connect WebSocket
+        FV.connectWS(
+          (msg) => {
+            // Forward to existing handlers in the loaded UI
+            if (window._onWSMessage) window._onWSMessage(msg);
+          },
+          () => console.log('[app] WS connected'),
+          () => console.log('[app] WS disconnected')
+        );
+
+        // Show main app
+        loading.classList.add('hidden');
+        appRoot.classList.remove('hidden');
+
+        // Apply dark/light mode
+        if (!FVState.get('darkMode')) {
+          document.body.classList.add('light-mode');
+        }
+
+        console.log('[app] FaithView Pro ready');
+
+      } catch (err) {
+        console.error('[app] startup failed:', err);
+        setStep('step-bible', 'error');
+        setStep('step-detector', 'error');
+        setStep('step-embedding', 'error');
+        setStep('step-audio', 'error');
+        setStep('step-transcription', 'error');
+        showError(err.message || 'Unknown error during startup');
+      }
+    })();
+  </script>
+</body>
+</html>

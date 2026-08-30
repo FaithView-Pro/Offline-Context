@@ -1,0 +1,21 @@
+[package]
+name = "faithview-pro"
+version = "1.0.0"
+description = "FaithView Pro — Real-time Bible verse detection and presentation"
+authors = ["FaithView Pro"]
+edition = "2021"
+
+[lib]
+name = "faithview_pro_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
