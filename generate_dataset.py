@@ -146,6 +146,8 @@ def load_corpus_lookup() -> tuple[dict, list, list]:
     Falls back to amplified.json + nkjv.json if bible_all_versions.json is absent.
     """
     allv = HERE / "bible_all_versions.json"
+    if not allv.exists():
+        allv = HERE / "versions" / "bible_all_versions.json"
     if allv.exists():
         data = json.loads(allv.read_text(encoding="utf-8"))
         versions = list(data.get("versions", []))

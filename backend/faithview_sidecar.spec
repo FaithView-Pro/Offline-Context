@@ -22,8 +22,8 @@ a = Analysis(
     pathex=['.'],
     binaries=[],
     datas=[
-        # Bible data
-        ('../bible_all_versions.json', '.'),
+        # Bible data (check versions/ subdirectory first)
+        ('../versions/bible_all_versions.json', '.') if os.path.exists(os.path.join('..', 'versions', 'bible_all_versions.json')) else ('../bible_all_versions.json', '.'),
         ('../nkjv.json', '.'),
         ('../amplified.json', '.'),
         # ONNX model

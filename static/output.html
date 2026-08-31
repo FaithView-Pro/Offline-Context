@@ -10,7 +10,7 @@
     height:100%;
     overflow:hidden;
     background:#000;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -64,6 +64,30 @@
     transition: opacity .6s ease;
     white-space:nowrap;
   }
+
+  /* ---------- Alert ticker (lower third) ---------- */
+  #alert-bar{
+    position:fixed; bottom:0; left:0; right:0; z-index:30;
+    background:#8b6bff;
+    overflow:hidden; height:0;
+    transition: height .3s ease;
+  }
+  #alert-bar.active{ height:44px; }
+  #alert-bar .ticker{
+    display:flex; align-items:center;
+    height:44px; white-space:nowrap;
+    animation: alertScroll 12s linear infinite;
+  }
+  #alert-bar .ticker span{
+    display:inline-block;
+    padding:0 60px;
+    font-size:16px; font-weight:700; color:#fff;
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  @keyframes alertScroll{
+    0%{ transform:translateX(100vw); }
+    100%{ transform:translateX(-100%); }
+  }
 </style>
 </head>
 <body>
@@ -74,6 +98,7 @@
 </div>
 <div id="status" title="disconnected"></div>
 <div id="hint">Drag this window to your projector screen, then press <b>F</b> or <b>double-click</b> for fullscreen</div>
+<div id="alert-bar"><div class="ticker" id="alert-ticker"></div></div>
 
 <script>
 const WS_URL = (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/ws";
@@ -96,6 +121,15 @@ function fit(){
 window.addEventListener("resize", fit);
 
 function showSlide(text, reference){
+  // Reset stage for plain text mode (flex centering)
+  stage.style.display = 'flex';
+  stage.style.flexDirection = 'column';
+  stage.style.alignItems = 'center';
+  stage.style.justifyContent = 'center';
+  stage.style.padding = '7vmin 9vmin';
+  stage.querySelectorAll('.theme-el').forEach(e => e.remove());
+  txt.style.display = '';
+  ref.style.display = '';
   txt.textContent = text || "";
   ref.textContent = reference || "";
   stage.classList.add("live");
@@ -103,6 +137,15 @@ function showSlide(text, reference){
 }
 function clearSlide(){
   stage.classList.remove("live");
+  stage.querySelectorAll('.theme-el').forEach(e => e.remove());
+  txt.textContent = '';
+  ref.textContent = '';
+  // Reset to default flex layout
+  stage.style.display = 'flex';
+  stage.style.flexDirection = 'column';
+  stage.style.alignItems = 'center';
+  stage.style.justifyContent = 'center';
+  stage.style.padding = '7vmin 9vmin';
 }
 
 function connect(){
@@ -126,21 +169,33 @@ function connect(){
         }
       }
     }
+    if (m.type === "alert_update"){
+      const bar = document.getElementById("alert-bar");
+      const ticker = document.getElementById("alert-ticker");
+      if (m.alert && m.alert.text){
+        bar.classList.add("active");
+        ticker.innerHTML = "<span>" + m.alert.text + "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + m.alert.text + "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + m.alert.text + "</span>";
+        const speeds = {"very slow":"20s","slow":"15s","medium":"10s","fast":"6s","very fast":"4s"};
+        const dur = speeds[(m.alert.speed||"").toLowerCase()] || "10s";
+        ticker.style.animationDuration = dur;
+      } else {
+        bar.classList.remove("active");
+        ticker.innerHTML = "";
+      }
+    }
   };
 }
 connect();
 
 function renderTheme(theme){
   try{
-    // Reset stage inline styles
+    // Reset stage: no padding so absolute % elements align exactly as designed
     stage.style.position = 'fixed';
     stage.style.inset = '0';
-    stage.style.display = 'flex';
-    stage.style.flexDirection = 'column';
-    stage.style.alignItems = 'center';
-    stage.style.justifyContent = 'center';
+    stage.style.display = 'block';
+    stage.style.padding = '0';
+    stage.style.margin = '0';
     stage.style.textAlign = 'center';
-    stage.style.padding = '7vmin 9vmin';
     stage.style.transition = 'opacity .45s ease, background .3s ease';
     stage.style.background = '';
     stage.style.backgroundImage = '';
@@ -176,32 +231,29 @@ function renderTheme(theme){
 
     let hasRendered = false;
 
+    // Default element styles by type (for fallback when no style data exists)
+    const TYPE_DEFAULTS = {
+      verse:  { width:'84%', left:'8%', top:'20%', textAlign:'center', fontWeight:600, fontSize:'clamp(24px,4vw,44px)', lineHeight:'1.25', color:'#fff' },
+      ref:    { width:'76%', left:'12%', top:'62%', textAlign:'center', fontSize:'18px', fontWeight:700, letterSpacing:'.06em', color:'#f1d9a3', textTransform:'uppercase' },
+      copy:   { left:'22px', bottom:'16px', fontSize:'12px', color:'rgba(255,255,255,.98)' },
+      logo:   { right:'24px', top:'20px', width:'65px', height:'65px' },
+    };
+
     if (Array.isArray(theme.elements) && theme.elements.length){
       for (const el of theme.elements){
         if (!el || !el.type) continue;
 
         const div = document.createElement('div');
         div.className = 'theme-el';
+        const defaults = TYPE_DEFAULTS[el.type] || {};
 
         if (el.style){
-          // ---- Standalone format: element has raw CSS style string ----
+          // Style string contains percentage-based positioning from captureThemeState()
           div.style.cssText = el.style;
-          div.style.position = 'absolute';
-          div.style.display = 'flex';
-          div.style.alignItems = 'center';
-          div.style.justifyContent = el.style.includes('text-align: right') ? 'flex-end' :
-            el.style.includes('text-align: left') ? 'flex-start' : 'center';
-          div.style.overflow = 'hidden';
-          if (el.type === 'logo'){
-            // Extract background from style for logo
-            const bgMatch = el.style.match(/background:\s*([^;]+)/);
-            if (bgMatch){
-              div.style.background = bgMatch[1].trim();
-              div.style.borderRadius = '50%';
-              div.style.alignItems = 'center';
-              div.style.justifyContent = 'center';
-            }
-          }
+          // Ensure position context
+          if (!/position\s*:/i.test(el.style)) div.style.position = 'absolute';
+          div.style.textShadow = '0 2px 14px rgba(0,0,0,0.4)';
+          div.style.justifyContent = 'center';
           div.textContent = el.text || '';
         } else if (canvasCfg){
           // ---- Settings format: structured x/y/w/h ----
@@ -233,16 +285,25 @@ function renderTheme(theme){
           }
           div.textContent = el.text || '';
         } else {
-          // Fallback: no canvas config, no inline style - use defaults
+          // Fallback: no canvas config, no inline style - use type-aware defaults
           div.style.position = 'absolute';
-          div.style.inset = '10% 5%';
           div.style.display = 'flex';
           div.style.alignItems = 'center';
           div.style.justifyContent = 'center';
           div.style.textAlign = 'center';
-          div.style.color = '#fff';
-          div.style.fontWeight = '600';
-          div.style.fontSize = '4vmin';
+          div.style.overflow = 'hidden';
+          div.style.color = defaults.color || '#fff';
+          div.style.fontWeight = defaults.fontWeight || 600;
+          if (defaults.fontSize) div.style.fontSize = defaults.fontSize;
+          if (defaults.lineHeight) div.style.lineHeight = defaults.lineHeight;
+          if (defaults.width) div.style.width = defaults.width;
+          div.style.left = defaults.left || '10%';
+          if (defaults.top) div.style.top = defaults.top;
+          if (defaults.bottom) div.style.bottom = defaults.bottom;
+          if (defaults.right) div.style.right = defaults.right;
+          div.style.textShadow = '0 2px 14px rgba(0,0,0,0.4)';
+          const zMap = {verse:3, ref:2, copy:1, logo:4};
+          div.style.zIndex = zMap[el.type] || 1;
           div.textContent = el.text || '';
         }
 

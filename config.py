@@ -29,13 +29,9 @@ EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 EMBED_DIM = 384
 # bge-small-en-v1.5 expects this instruction prefix on *queries* only.
 QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
-WHISPER_MODEL = "small.en"       # faster-whisper model id; upgraded from "base" (see benchmark)
+WHISPER_MODEL = "base"           # faster-whisper model id
 WHISPER_LANGUAGE = "en"          # set None for auto-detect
-WHISPER_BEAM_SIZE = 1            # paired with small.en + widened 8s window per benchmark
-# small.en beam=1 on 10s tile (8s + 2s overlap) = ~3.7s Whisper time measured,
-# leaving ~4.3s for the rest of the pipeline (buffer → ONNX → FAISS → rerank → score).
-# Window widened from 4s to 8s (10s tiles) to create that margin --
-# without the widen, small.en alone at 4s would lag. See benchmark_live_chunk.py.
+WHISPER_BEAM_SIZE = 1            # paired with base + 4s window / 1s overlap
 WHISPER_MIN_AVG_LOGPROB = -0.8   # per-segment min avg_logprob (skip below = likely hallucinated)
 WHISPER_MAX_NO_SPEECH_PROB = 0.6 # per-segment max no_speech_prob (skip >= = likely silence)
 WHISPER_VAD_FILTER = True

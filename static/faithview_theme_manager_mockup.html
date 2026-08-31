@@ -237,7 +237,44 @@ function newTheme(){document.querySelector('.theme-title').textContent='New Them
 function saveTheme(){
   // capture a theme snapshot
   function captureThemeState(){
-    return { id: null, name: document.querySelector('.theme-title').textContent.trim(), background: { color: canvas.style.backgroundColor, image: canvas.style.backgroundImage }, elements: [...canvas.querySelectorAll('.element')].map(e=>({ type: e.dataset.type, text: (e.innerText||'').trim(), style: e.getAttribute('style')||'', className: e.className })) };
+    const canvasRect = canvas.getBoundingClientRect();
+    return { id: null, name: document.querySelector('.theme-title').textContent.trim(), background: { color: canvas.style.backgroundColor, image: canvas.style.backgroundImage }, elements: [...canvas.querySelectorAll('.element')].map(e=>{
+      const cs = getComputedStyle(e);
+      // Compute position/size as percentages of the canvas using getBoundingClientRect
+      const er = e.getBoundingClientRect();
+      const leftPct = ((er.left - canvasRect.left) / canvasRect.width * 100);
+      const topPct = ((er.top - canvasRect.top) / canvasRect.height * 100);
+      const widthPct = (er.width / canvasRect.width * 100);
+      const heightPct = (er.height / canvasRect.height * 100);
+      // Build a complete style string with percentage-based positioning
+      const parts = [
+        'position:absolute',
+        'left:' + leftPct.toFixed(1) + '%',
+        'top:' + topPct.toFixed(1) + '%',
+        'width:' + widthPct.toFixed(1) + '%',
+        'height:' + heightPct.toFixed(1) + '%',
+        'display:flex',
+        'align-items:center',
+        'overflow:hidden',
+      ];
+      // Capture text styling from computed style
+      const textProps = ['text-align','font-size','font-weight','color','line-height','letter-spacing','text-transform','font-family'];
+      for (const prop of textProps){
+        const val = cs.getPropertyValue(prop);
+        if (val && val !== 'normal' && val !== 'none' && val !== 'start' && val !== 'center'){
+          parts.push(prop + ':' + val);
+        } else if (val === 'center' || val === 'left' || val === 'right'){
+          parts.push(prop + ':' + val);
+        }
+      }
+      // Logo-specific
+      if (e.dataset.type === 'logo'){
+        const bg = cs.getPropertyValue('background');
+        if (bg && bg !== 'none') parts.push('background:' + bg);
+        parts.push('border-radius:12px');
+      }
+      return { type: e.dataset.type, text: (e.innerText||'').replace(/handle/g,'').trim(), style: parts.join(';') };
+    }) };
   }
 
   function ts(){ return new Date().toISOString(); }
@@ -265,6 +302,7 @@ function saveTheme(){
   setThemeList(themes);
   setActiveTheme(current);
   document.querySelector('.theme-title').textContent = current.name;
+  syncThemesToServer();
   // Also publish the theme live so the main display updates immediately
   try{
     // representative text/reference
@@ -299,8 +337,43 @@ function exportTheme(){
 }
 
 function useThemeFromCurrentState(){
-  // capture minimal theme representation and set active
-  const theme = { id: 'theme-'+Date.now(), name: document.querySelector('.theme-title').textContent.trim(), background: { color: canvas.style.backgroundColor, image: canvas.style.backgroundImage }, elements: [...canvas.querySelectorAll('.element')].map(e=>({ type: e.dataset.type, text: (e.innerText||'').trim(), style: e.getAttribute('style')||'' })) };
+  // capture full theme representation with percentage-based positioning
+  function captureFull(){
+    const canvasRect = canvas.getBoundingClientRect();
+    const elems = [...canvas.querySelectorAll('.element')].map(e=>{
+      const cs = getComputedStyle(e);
+      const er = e.getBoundingClientRect();
+      const leftPct = ((er.left - canvasRect.left) / canvasRect.width * 100);
+      const topPct = ((er.top - canvasRect.top) / canvasRect.height * 100);
+      const widthPct = (er.width / canvasRect.width * 100);
+      const heightPct = (er.height / canvasRect.height * 100);
+      const parts = [
+        'position:absolute',
+        'left:' + leftPct.toFixed(1) + '%',
+        'top:' + topPct.toFixed(1) + '%',
+        'width:' + widthPct.toFixed(1) + '%',
+        'height:' + heightPct.toFixed(1) + '%',
+        'display:flex',
+        'align-items:center',
+        'overflow:hidden',
+      ];
+      const textProps = ['text-align','font-size','font-weight','color','line-height','letter-spacing','text-transform','font-family'];
+      for (const prop of textProps){
+        const val = cs.getPropertyValue(prop);
+        if (val && (val === 'center' || val === 'left' || val === 'right' || (val !== 'normal' && val !== 'none' && val !== 'start'))){
+          parts.push(prop + ':' + val);
+        }
+      }
+      if (e.dataset.type === 'logo'){
+        const bg = cs.getPropertyValue('background');
+        if (bg && bg !== 'none') parts.push('background:' + bg);
+        parts.push('border-radius:12px');
+      }
+      return { type: e.dataset.type, text: (e.innerText||'').replace(/handle/g,'').trim(), style: parts.join(';') };
+    });
+    return { id: 'theme-'+Date.now(), name: document.querySelector('.theme-title').textContent.trim(), background: { color: canvas.style.backgroundColor, image: canvas.style.backgroundImage }, elements: elems };
+  }
+  const theme = captureFull();
   try{ localStorage.setItem('faithview-active-theme', JSON.stringify(theme)); }catch(e){}
   // also POST a representative display to server so projector updates
   const verseEl = theme.elements.find(e=>e.type==='verse');
@@ -495,6 +568,64 @@ function toast(msg){
 
 // Initial render
 renderThemeList();
+
+// ---- Push alert live ----
+function pushAlertLive(){
+  const text = document.getElementById('alertText').value.trim();
+  if(!text){ toast('Enter alert text first'); return; }
+  fetch('/alert', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ text: text, speed: alertSpeed.textContent || 'medium' })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if(d.ok) toast('Alert pushed live');
+    else toast('Failed: ' + (d.error||'unknown'));
+  })
+  .catch(e => toast('Error: ' + e));
+}
+
+// ---- Server-side theme persistence helpers ----
+async function syncThemesToServer(){
+  try{
+    const themes = getThemeList();
+    await fetch('/themes/save', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ theme: { themes: themes } })
+    });
+  }catch(e){}
+}
+async function loadThemesFromServer(){
+  try{
+    const r = await fetch('/themes/load');
+    const d = await r.json();
+    if(d.themes && d.themes.length){
+      const local = getThemeList();
+      // Merge: add server themes not already in local (by id or name)
+      const localKeys = new Set(local.map(t => (t.id||'') + '|' + (t.name||'').toLowerCase()));
+      let merged = [...local];
+      let added = 0;
+      for(const st of d.themes){
+        const key = (st.id||'') + '|' + (st.name||'').toLowerCase();
+        if(!localKeys.has(key)){
+          merged.push(st);
+          added++;
+        }
+      }
+      if(added > 0){
+        setThemeList(merged);
+        renderThemeList();
+        toast('Loaded ' + added + ' theme(s) from server');
+      } else if(local.length === 0){
+        setThemeList(d.themes);
+        renderThemeList();
+      }
+    }
+  }catch(e){}
+}
+loadThemesFromServer();
 </script>
 </body>
 </html>

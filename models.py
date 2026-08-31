@@ -44,7 +44,15 @@ class Embedder:
 
         _apply_offline_env(offline)
         self.model_name = model_name
-        self._st = SentenceTransformer(model_name)
+        try:
+            self._st = SentenceTransformer(model_name)
+        except Exception as exc:
+            if offline:
+                print(f"[models] embedder offline load failed ({exc}); retrying with network")
+                _apply_offline_env(False)
+                self._st = SentenceTransformer(model_name)
+            else:
+                raise
         self._dim = self._st.get_sentence_embedding_dimension()
 
     @property

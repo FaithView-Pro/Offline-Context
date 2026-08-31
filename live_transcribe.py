@@ -477,8 +477,8 @@ class LiveTranscriber:
         self,
         on_segment: Callable[[Segment], None],
         model_name: str = config.WHISPER_MODEL,
-        chunk_seconds: float = 8.0,
-        overlap_seconds: float = 2.0,
+        chunk_seconds: float = 4.0,
+        overlap_seconds: float = 1.0,
         language: Optional[str] = config.WHISPER_LANGUAGE,
         beam_size: int = config.WHISPER_BEAM_SIZE,
         vad_filter: bool = True,
@@ -779,8 +779,8 @@ def _cli():
     ap.add_argument("--realtime", action="store_true",
                     help="pace file replay to wall-clock (default: as fast as possible)")
     ap.add_argument("--model", default=config.WHISPER_MODEL, help="faster-whisper model id")
-    ap.add_argument("--chunk", type=float, default=8.0, help="chunk window seconds (was 4.0; widened for small.en margin)")
-    ap.add_argument("--overlap", type=float, default=2.0, help="overlap seconds (was 1.0)")
+    ap.add_argument("--chunk", type=float, default=4.0, help="chunk window seconds")
+    ap.add_argument("--overlap", type=float, default=1.0, help="overlap seconds")
     ap.add_argument("--max-chunks", type=int, default=None, help="stop after N windows (file/dry-run)")
     ap.add_argument("--no-vad", action="store_true", help="disable VAD filter")
     ap.add_argument("--device", type=int, default=None, help="mic input device index")
@@ -859,8 +859,8 @@ class WhisperTranscriptionSource:
     def __init__(
         self,
         model_name: str = config.WHISPER_MODEL,
-        chunk_seconds: float = 8.0,
-        overlap_seconds: float = 2.0,
+        chunk_seconds: float = 4.0,
+        overlap_seconds: float = 1.0,
         language: Optional[str] = config.WHISPER_LANGUAGE,
         beam_size: int = config.WHISPER_BEAM_SIZE,
         vad_filter: bool = True,

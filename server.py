@@ -105,6 +105,8 @@ class AppState:
         self.transcription_source = "whisper"  # "whisper" | "deepgram"
         self.mode = "semi_autopilot"           # "autopilot" | "semi_autopilot"
         self.display: Optional[dict] = None   # last presented display/theme
+        self.active_alert: Optional[dict] = None  # current scrolling alert
+        self.themes_file = os.path.join(config.HERE, "saved_themes.json")
 
     def init_pipeline(self, **kwargs):
         # The pipeline's callbacks push events onto the asyncio loop so the WS
@@ -168,6 +170,17 @@ class AppState:
         for ws in dead:
             self.clients.discard(ws)
 
+    def load_themes(self) -> list[dict]:
+        try:
+            with open(self.themes_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return []
+
+    def save_themes(self, themes: list[dict]):
+        with open(self.themes_file, "w", encoding="utf-8") as f:
+            json.dump(themes, f, ensure_ascii=False, indent=2)
+
 
 STATE = AppState()
 
@@ -201,6 +214,11 @@ class ModeReq(BaseModel):
 
 class ThemeReq(BaseModel):
     theme: dict
+
+
+class AlertReq(BaseModel):
+    text: str
+    speed: Optional[str] = "medium"
 
 
 # ===========================================================================
@@ -387,6 +405,8 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
             await ws.send_text(json.dumps({"type": "mode_update", "mode": STATE.mode}))
             if STATE.display:
                 await ws.send_text(json.dumps({"type": "display_update", **STATE.display}))
+            if STATE.active_alert:
+                await ws.send_text(json.dumps({"type": "alert_update", "alert": STATE.active_alert}))
         except Exception:
             STATE.clients.discard(ws)
             return
@@ -441,6 +461,36 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
         print(f"[server] broadcasting display_update with theme (reference={STATE.display.get('reference')})")
         await STATE.broadcast({"type": "display_update", **STATE.display})
         return {"ok": True}
+
+    @app.post("/alert")
+    async def push_alert(req: AlertReq):
+        STATE.active_alert = {"text": req.text, "speed": req.speed or "medium"}
+        await STATE.broadcast({"type": "alert_update", "alert": STATE.active_alert})
+        return {"ok": True}
+
+    @app.post("/alert/clear")
+    async def clear_alert():
+        STATE.active_alert = None
+        await STATE.broadcast({"type": "alert_update", "alert": None})
+        return {"ok": True}
+
+    @app.get("/themes/load")
+    async def load_themes():
+        return {"themes": STATE.load_themes()}
+
+    @app.post("/themes/save")
+    async def save_themes_endpoint(req: ThemeReq):
+        themes = []
+        try:
+            body = req.theme
+            if isinstance(body, dict):
+                themes = body.get("themes", [])
+            elif isinstance(body, list):
+                themes = body
+        except Exception:
+            pass
+        STATE.save_themes(themes)
+        return {"ok": True, "count": len(themes)}
 
     @app.delete("/queue/{item_id}")
     async def queue_remove(item_id: str):

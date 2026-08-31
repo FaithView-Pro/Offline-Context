@@ -31,7 +31,7 @@
     display:flex;
     height:100vh;
     overflow:hidden;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     font-size:13px;
     -webkit-font-smoothing:antialiased;
   }
@@ -259,7 +259,7 @@
     display:grid; grid-template-columns:56px 260px 1fr 300px;
     grid-template-rows:50px 1fr; height:100%;
     background:#0d0d12; color:#f2f0f7;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   }
   .te-top{
     grid-column:1/-1; background:#17171f;
@@ -1239,6 +1239,11 @@ setInterval(loadNdi, 5000);   // keep receiver count / status fresh
     try { localStorage.setItem('faithview-themes', JSON.stringify(TE.themes)); } catch(e){}
     const sync = document.getElementById('te-sync');
     if(sync) sync.innerHTML = '<b>&#9679;</b> Saved locally';
+    // Sync to server for cross-page persistence
+    fetch('/themes/save', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ theme: { themes: TE.themes } })
+    }).catch(function(){});
   }
   function loadAll(){
     try {
@@ -1247,6 +1252,27 @@ setInterval(loadNdi, 5000);   // keep receiver count / status fresh
       else { TE.themes = [defaultTheme()]; saveAll(); }
     } catch(e){ TE.themes = [defaultTheme()]; saveAll(); }
     if(!TE.activeId) TE.activeId = TE.themes[0].id;
+    // Also try loading from server if local is only the default
+    fetch('/themes/load').then(function(r){ return r.json(); }).then(function(d){
+      if(d.themes && d.themes.length){
+        var local = [];
+        try { local = JSON.parse(localStorage.getItem('faithview-themes')) || []; } catch(e){}
+        var localNames = {};
+        local.forEach(function(t){ localNames[(t.name||'').toLowerCase()] = true; });
+        var added = 0;
+        d.themes.forEach(function(st){
+          if(!localNames[(st.name||'').toLowerCase()]){
+            TE.themes.push(st);
+            added++;
+          }
+        });
+        if(added > 0){
+          saveAll();
+          renderThemeList();
+          rebuildCanvas();
+        }
+      }
+    }).catch(function(){});
   }
 
   /* ---------- Theme list ---------- */

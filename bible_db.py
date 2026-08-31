@@ -41,7 +41,12 @@ from typing import Optional
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ALL_VERSIONS_PATH = os.path.join(HERE, "bible_all_versions.json")
+# Check project root first, then versions/ subdirectory
+_candidate = os.path.join(HERE, "bible_all_versions.json")
+if os.path.exists(_candidate):
+    ALL_VERSIONS_PATH = _candidate
+else:
+    ALL_VERSIONS_PATH = os.path.join(HERE, "versions", "bible_all_versions.json")
 
 # Canonical 66-book order, exactly as used in amplified.json / nkjv.json /
 # bible_all_versions.json so direct lookups line up with the FAISS metadata.

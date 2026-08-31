@@ -1,0 +1,33 @@
+[
+  {
+    "id": "theme-1788185261170",
+    "name": "11",
+    "background": {
+      "color": "rgb(17, 17, 20)",
+      "image": "none"
+    },
+    "elements": [
+      {
+        "type": "logo",
+        "text": "",
+        "style": "position:absolute;left:90.3%;top:3.9%;width:7.1%;height:12.6%;display:flex;align-items:center;overflow:hidden;font-size:16px;font-weight:400;color:rgb(18, 35, 58);font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, Helvetica, Arial, sans-serif;background:rgba(0, 0, 0, 0) none repeat scroll 0% 0% / auto padding-box border-box;border-radius:12px"
+      },
+      {
+        "type": "verse",
+        "text": "In the beginning God created the heaven and the earth",
+        "style": "position:absolute;left:8.0%;top:16.1%;width:84.0%;height:49.0%;display:flex;align-items:center;overflow:hidden;text-align:center;font-size:64px;font-weight:600;color:rgb(255, 255, 255);line-height:80px;font-family:Georgia, serif"
+      },
+      {
+        "type": "ref",
+        "text": "GENESIS 1:1 (NKJV)",
+        "style": "position:absolute;left:38.6%;top:88.3%;width:76.0%;height:6.9%;display:flex;align-items:center;overflow:hidden;text-align:center;font-size:18px;font-weight:700;color:rgb(255, 255, 255);letter-spacing:1.08px;text-transform:uppercase;font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, Helvetica, Arial, sans-serif"
+      },
+      {
+        "type": "copy",
+        "text": "Christ's Heart Church",
+        "style": "position:absolute;left:2.4%;top:91.5%;width:15.4%;height:5.4%;display:flex;align-items:center;overflow:hidden;font-size:12px;font-weight:400;color:rgba(255, 255, 255, 0.8);font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Inter, Roboto, Helvetica, Arial, sans-serif"
+      }
+    ],
+    "updatedAt": "2026-08-31T14:07:41.170Z"
+  }
+]

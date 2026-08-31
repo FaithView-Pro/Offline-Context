@@ -195,13 +195,16 @@ class LivePipeline:
         if self._db is None:
             self._db = bible_db.get_bible_db()
         if self._retriever is None:
-            import models
-            embedder = models.get_embedder(offline=self.offline)
-            self._retriever = Retriever.from_disk(
-                embedder,
-                index_path=os.path.join(self.s.index_dir, "verses.faiss"),
-                meta_path=os.path.join(self.s.index_dir, "verses_meta.json"),
-            )
+            try:
+                import models
+                embedder = models.get_embedder(offline=self.offline)
+                self._retriever = Retriever.from_disk(
+                    embedder,
+                    index_path=os.path.join(self.s.index_dir, "verses.faiss"),
+                    meta_path=os.path.join(self.s.index_dir, "verses_meta.json"),
+                )
+            except Exception as exc:
+                print(f"[pipeline] retriever load failed ({exc}); running without verse retrieval", flush=True)
         if self._detector is None:
             self._build_detector(self.quote_detector_kind)
 
