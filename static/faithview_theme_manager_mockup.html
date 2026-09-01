@@ -32,7 +32,7 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
 .canvas{width:min(920px,calc(100% - 50px));aspect-ratio:16/9;position:relative;overflow:hidden;border-radius:5px;background:#2b2470 center/cover;box-shadow:0 30px 70px rgba(0,0,0,.12)}
 .canvas.video{background:linear-gradient(rgba(0,0,0,.3),rgba(0,0,0,.4)),url('https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=1400') center/cover}
 .element{position:absolute;border:2px solid transparent;padding:5px 8px;border-radius:5px;user-select:none;cursor:move}.element:hover{border-color:rgba(37,99,235,.4)}.element.selected{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.14)}.handle{display:none;position:absolute;width:8px;height:8px;background:var(--accent);border:1px solid white;border-radius:2px}.selected .handle{display:block}.nw{left:-6px;top:-6px}.ne{right:-6px;top:-6px}.sw{left:-6px;bottom:-6px}.se{right:-6px;bottom:-6px}
-.verse{left:8%;top:20%;width:84%;text-align:center;font:600 clamp(24px,4vw,44px)/1.25 var(--display);color:white}.ref{left:12%;top:62%;width:76%;text-align:center;font-size:18px;font-weight:700;letter-spacing:.06em;color:#f1d9a3;text-transform:uppercase}.copy{left:22px;bottom:16px;font-size:12px;color:#fffc}.logo{right:24px;top:20px;width:65px;height:65px;padding:0}.logo .mark{width:100%;height:100%;display:block;object-fit:cover;border-radius:12px;background:#e8a33d;color:#1a1200;font-weight:800;font-size:23px}
+.verse{left:8%;top:20%;width:84%;text-align:center;font:600 clamp(24px,4vw,44px)/1.25 var(--display);color:white}.ref{left:12%;top:62%;width:76%;text-align:center;font-size:18px;font-weight:700;letter-spacing:.06em;color:#f1d9a3;text-transform:uppercase}.copy{left:22px;bottom:16px;font-size:12px;color:#fffc}.logo{right:24px;top:20px;width:65px;height:65px;padding:4px}.logo .mark{width:100%;height:100%;display:block;object-fit:contain;border-radius:10px;background:#e8a33d;color:#1a1200;font-weight:800;font-size:23px}
 .toolbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:4px;border-radius:9px;display:flex;gap:3px;z-index:5}.toolbar button{width:31px;height:29px;border:0;background:none;color:var(--muted);border-radius:6px}.toolbar button:hover{background:var(--panel3);color:var(--text)}
 .live{position:absolute;bottom:12px;left:14px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.3);color:#dc2626;border-radius:20px;padding:5px 9px;font-size:10px;font-weight:700}.live b{display:inline-block;width:7px;height:7px;border-radius:50%;background:#dc2626;margin-right:5px}
 .zoom{position:absolute;right:14px;bottom:12px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px 9px;color:var(--muted);font-size:10px}
@@ -55,7 +55,7 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
 <header class="top">
   <button class="btn" onclick="window.location.href='/'" style="margin-right:4px;">← Back</button>
   <div class="brand"><i></i>FaithView Pro</div>
-  <div class="theme-title" contenteditable="true">Christ's Heart Church Main — Main Theme</div>
+  <div class="theme-title" contenteditable="true"> St. Paul Church Newyork - Main Theme</div>
   <div class="spacer"></div>
 
   <button class="btn" onclick="exportTheme()">Export Template </button>
@@ -98,7 +98,7 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
 <main class="canvas-wrap">
   <div id="canvas" class="canvas">
     <div class="toolbar"><button onclick="alignEl('left')">≡</button><button onclick="alignEl('center')">☷</button><button onclick="alignEl('right')">≡</button><button onclick="duplicateSelected()">⧉</button><button onclick="deleteSelected()">⌫</button></div>
-    <div id="logo" class="element logo" data-type="logo" onclick="selectElement(this,event)"><img class="mark" src="https://images.unsplash.com/photo-1508615039623-a25605d2b022?q=80&w=300" alt="Church logo"><span class="handle nw"></span><span class="handle ne"></span><span class="handle sw"></span><span class="handle se"></span></div>
+    <div id="logo" class="element logo" data-type="logo" onclick="selectElement(this,event)"><img class="mark" src="https://img.icons8.com/?size=100&id=kktvCbkDLbNb&format=png&color=000000" alt="Church logo"><span class="handle nw"></span><span class="handle ne"></span><span class="handle sw"></span><span class="handle se"></span></div>
     <div id="verse" class="element verse" data-type="verse" onclick="selectElement(this,event)">In the beginning God created the heaven and the earth<span class="handle nw"></span><span class="handle ne"></span><span class="handle sw"></span><span class="handle se"></span></div>
     <div id="ref" class="element ref" data-type="ref" onclick="selectElement(this,event)">Genesis 1:1 (NKJV)<span class="handle nw"></span><span class="handle ne"></span><span class="handle sw"></span><span class="handle se"></span></div>
     <div id="copy" class="element copy" data-type="copy" onclick="selectElement(this,event)">Christ's Heart Church<span class="handle nw"></span><span class="handle ne"></span><span class="handle sw"></span><span class="handle se"></span></div>
@@ -132,8 +132,8 @@ button,input,select,textarea{font:inherit} button{cursor:pointer}
   </div>
 
   <div id="rp-logo" class="rp">
-    <div class="rphead"><div class="badge">▣</div><div><h3>Logo image</h3><p>Independent movable brand element</p></div></div>
-    <div class="section"><div class="label">Logo source</div><div class="media" data-dynamic-media="logo-media"><div><img src="https://images.unsplash.com/photo-1508615039623-a25605d2b022?q=80&w=300"></div><div class="add" onclick="pickLogoImage()">＋ Replace</div></div></div>
+    <div class="rphead"><div class="badge">▣</div><div><h3>Logo image</h3><p>Place your church logo here</p></div></div>
+    <div class="section"><div class="label">Logo source</div><div class="media" data-dynamic-media="logo-media"><div><img src="https://img.icons8.com/?size=100&id=kktvCbkDLbNb&format=png&color=000000"></div><div class="add" onclick="pickLogoImage()">＋ Replace</div></div></div>
     <div class="section"><div class="label">Size</div><input class="range" type="range" min="24" max="240" value="65" oninput="logo.style.width=this.value+'px';logo.style.height=this.value+'px'"><div class="row"><span class="field">Transparency</span><span class="value" id="logoTrans">100%</span></div><input class="range" type="range" min="0" max="100" value="100" oninput="logo.style.opacity=this.value/100;logoTrans.textContent=this.value+'%'"></div>
     <div class="section"><div class="field">Drag the selected logo directly on the canvas to position it.</div></div>
   </div>
@@ -272,8 +272,14 @@ function saveTheme(){
         const bg = cs.getPropertyValue('background');
         if (bg && bg !== 'none') parts.push('background:' + bg);
         parts.push('border-radius:12px');
+        const img = e.querySelector('img.mark');
+        if (img && img.src) {
+          parts.push('padding:4px');
+        }
       }
-      return { type: e.dataset.type, text: (e.innerText||'').replace(/handle/g,'').trim(), style: parts.join(';') };
+      const imgEl = e.querySelector('img.mark');
+      const logoSrc = (e.dataset.type === 'logo' && imgEl) ? imgEl.src : '';
+      return { type: e.dataset.type, text: (e.innerText||'').replace(/handle/g,'').trim(), style: parts.join(';'), logoSrc: logoSrc || undefined };
     }) };
   }
 
@@ -368,20 +374,26 @@ function useThemeFromCurrentState(){
         const bg = cs.getPropertyValue('background');
         if (bg && bg !== 'none') parts.push('background:' + bg);
         parts.push('border-radius:12px');
+        const img = e.querySelector('img.mark');
+        if (img && img.src) {
+          parts.push('padding:4px');
+          parts.push('object-fit:contain');
+        }
       }
-      return { type: e.dataset.type, text: (e.innerText||'').replace(/handle/g,'').trim(), style: parts.join(';') };
+      const imgEl = e.querySelector('img.mark');
+      const logoSrc = (e.dataset.type === 'logo' && imgEl) ? imgEl.src : '';
+      return { type: e.dataset.type, text: (e.innerText||'').replace(/handle/g,'').trim(), style: parts.join(';'), logoSrc: logoSrc || undefined };
     });
     return { id: 'theme-'+Date.now(), name: document.querySelector('.theme-title').textContent.trim(), background: { color: canvas.style.backgroundColor, image: canvas.style.backgroundImage }, elements: elems };
   }
   const theme = captureFull();
   try{ localStorage.setItem('faithview-active-theme', JSON.stringify(theme)); }catch(e){}
-  // also POST a representative display to server so projector updates
   const verseEl = theme.elements.find(e=>e.type==='verse');
   const refEl = theme.elements.find(e=>e.type==='ref');
   const text = verseEl ? verseEl.text : (theme.elements.find(e=>e.type==='copy')||{text:''}).text;
   const reference = refEl ? refEl.text : '';
-  fetch('/present', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ reference, translation: '', text }) })
-    .then(r=>{ if(!r.ok) throw new Error('present failed'); return r.json(); })
+  fetch('/present-theme', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ theme: Object.assign({}, theme, { reference, text }) }) })
+    .then(r=>{ if(!r.ok) throw new Error('present-theme failed'); return r.json(); })
     .then(()=> alert('Theme applied to live output'))
     .catch(e=> alert('Failed to apply theme live: '+e));
 }

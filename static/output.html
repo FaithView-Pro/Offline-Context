@@ -2,358 +2,1814 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FaithView Pro — Output</title>
-<style>
-  *{ box-sizing:border-box; margin:0; padding:0; }
 
-  html, body{
-    height:100%;
-    overflow:hidden;
-    background:#000;
-    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family:
+      Inter,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      Helvetica,
+      Arial,
+      sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Hide cursor after 2s of inactivity on projector */
-  body.hide-cursor, body.hide-cursor *{ cursor:none !important; }
-
-  /* ---------- Presentation stage ---------- */
-  #stage{
-    position:fixed; inset:0;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center;
-    padding:7vmin 9vmin;
-    background: radial-gradient(circle at 50% 30%, #64a3f5 0%, #2560d0 55%, #0b1e45 100%);
-    opacity:0;
-    transition: opacity .45s ease;
-  }
-  #stage.live{ opacity:1; }
-
-  #verse-text{
-    color:#fff;
-    font-weight:700;
-    line-height:1.38;
-    font-size:5.2vmin;
-    max-width:88vmin;
-    text-shadow: 0 2px 14px rgba(11,30,69,.4);
-  }
-  #verse-ref{
-    margin-top:4.5vmin;
-    color:#c9dfff;
-    font-weight:600;
-    font-size:2.6vmin;
-    letter-spacing:.1em;
+  body.hide-cursor,
+  body.hide-cursor * {
+    cursor: none !important;
   }
 
-  /* ---------- Connection status dot ---------- */
-  #status{
-    position:fixed; top:16px; right:16px; z-index:20;
-    width:10px; height:10px; border-radius:50%;
-    background:#dc2626;
-    transition: opacity .5s ease;
-  }
-  #status.live{ background:#16a34a; opacity:0; }
+  /* =========================================================
+     OUTPUT FRAME
+     ========================================================= */
 
-  /* ---------- Hint banner ---------- */
-  #hint{
-    position:fixed; left:50%; bottom:26px; transform:translateX(-50%); z-index:20;
-    background: rgba(18,35,58,.88);
-    color:#fff; font-size:13px; font-weight:600;
-    padding:9px 18px; border-radius:999px;
-    box-shadow: 0 6px 20px rgba(0,0,0,.35);
-    transition: opacity .6s ease;
-    white-space:nowrap;
+  .output-frame {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+
+    background:
+      radial-gradient(
+        circle at 50% 30%,
+        #4a9eff 0%,
+        #1a3a6a 55%,
+        #0a0f1a 100%
+      );
+
+    overflow: hidden;
   }
 
-  /* ---------- Alert ticker (lower third) ---------- */
-  #alert-bar{
-    position:fixed; bottom:0; left:0; right:0; z-index:30;
-    background:#8b6bff;
-    overflow:hidden; height:0;
-    transition: height .3s ease;
+  /* =========================================================
+     VERSE OVERLAY
+     ========================================================= */
+
+  .output-frame .verse-overlay {
+    position: absolute;
+    inset: 0;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    width: 100%;
+    height: 100%;
+
+    padding: 5vh 6vw;
+
+    text-align: center;
   }
-  #alert-bar.active{ height:44px; }
-  #alert-bar .ticker{
-    display:flex; align-items:center;
-    height:44px; white-space:nowrap;
-    animation: alertScroll 12s linear infinite;
+
+  .output-frame .verse-overlay .vtext {
+    color: #fff;
+
+    font-size: 5.2vmin;
+    font-weight: 700;
+    line-height: 1.38;
+
+    max-width: 88vw;
+
+    text-shadow:
+      0 2px 14px rgba(0, 0, 0, 0.4);
+
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
-  #alert-bar .ticker span{
-    display:inline-block;
-    padding:0 60px;
-    font-size:16px; font-weight:700; color:#fff;
-    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+
+  .output-frame .verse-overlay .vref {
+    color: #c9dfff;
+
+    font-size: 2.6vmin;
+    margin-top: 4.5vmin;
+
+    font-weight: 600;
+
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+
+    max-width: 90vw;
+
+    word-wrap: break-word;
   }
-  @keyframes alertScroll{
-    0%{ transform:translateX(100vw); }
-    100%{ transform:translateX(-100%); }
+
+  /* =========================================================
+     THEME ELEMENTS
+     ========================================================= */
+
+  .theme-extra {
+    position: absolute;
+    pointer-events: none;
+  }
+
+  .theme-logo img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: contain;
+
+    border-radius: 10px;
+
+    display: block;
+  }
+
+  /* =========================================================
+     CONNECTION STATUS
+     ========================================================= */
+
+  #status {
+    position: fixed;
+
+    top: 16px;
+    right: 16px;
+
+    z-index: 100;
+
+    width: 10px;
+    height: 10px;
+
+    border-radius: 50%;
+
+    background: #dc2626;
+
+    transition:
+      opacity 0.5s ease,
+      background 0.3s ease;
+  }
+
+  #status.live {
+    background: #16a34a;
+    opacity: 0;
+  }
+
+  /* =========================================================
+     HINT
+     ========================================================= */
+
+  #hint {
+    position: fixed;
+
+    left: 50%;
+    bottom: 26px;
+
+    transform: translateX(-50%);
+
+    z-index: 100;
+
+    background: rgba(18, 35, 58, 0.88);
+
+    color: #fff;
+
+    font-size: 13px;
+    font-weight: 600;
+
+    padding: 9px 18px;
+
+    border-radius: 999px;
+
+    box-shadow:
+      0 6px 20px rgba(0, 0, 0, 0.35);
+
+    transition: opacity 0.6s ease;
+
+    white-space: nowrap;
+  }
+
+  /* =========================================================
+     ALERT BAR
+     ========================================================= */
+
+  #alert-bar {
+    position: fixed;
+
+    bottom: 0;
+    left: 0;
+    right: 0;
+
+    z-index: 200;
+
+    background: #8b6bff;
+
+    overflow: hidden;
+
+    height: 0;
+
+    transition: height 0.3s ease;
+  }
+
+  #alert-bar.active {
+    height: 44px;
+  }
+
+  #alert-bar .ticker {
+    display: flex;
+
+    align-items: center;
+
+    height: 44px;
+
+    white-space: nowrap;
+
+    animation:
+      alertScroll 12s linear infinite;
+  }
+
+  #alert-bar .ticker span {
+    display: inline-block;
+
+    padding: 0 60px;
+
+    font-size: 16px;
+    font-weight: 700;
+
+    color: #fff;
+  }
+
+  @keyframes alertScroll {
+    0% {
+      transform: translateX(100vw);
+    }
+
+    100% {
+      transform: translateX(-100%);
+    }
   }
 </style>
 </head>
+
 <body>
 
-<div id="stage">
-  <div id="verse-text"></div>
-  <div id="verse-ref"></div>
+<!-- =========================================================
+     OUTPUT
+     ========================================================= -->
+
+<div class="output-frame" id="output-frame">
+
+  <div
+    class="verse-overlay"
+    id="output-overlay"
+  >
+
+    <div
+      class="vtext"
+      id="output-vtext"
+    ></div>
+
+    <div
+      class="vref"
+      id="output-vref"
+    ></div>
+
+  </div>
+
 </div>
-<div id="status" title="disconnected"></div>
-<div id="hint">Drag this window to your projector screen, then press <b>F</b> or <b>double-click</b> for fullscreen</div>
-<div id="alert-bar"><div class="ticker" id="alert-ticker"></div></div>
+
+
+<!-- =========================================================
+     STATUS
+     ========================================================= -->
+
+<div
+  id="status"
+  title="disconnected"
+></div>
+
+
+<!-- =========================================================
+     HINT
+     ========================================================= -->
+
+<div id="hint">
+  Drag this window to your projector screen,
+  then press <b>F</b> or <b>double-click</b> for fullscreen
+</div>
+
+
+<!-- =========================================================
+     ALERT
+     ========================================================= -->
+
+<div id="alert-bar">
+
+  <div
+    class="ticker"
+    id="alert-ticker"
+  ></div>
+
+</div>
+
 
 <script>
-const WS_URL = (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/ws";
 
-const stage = document.getElementById("stage");
-const txt = document.getElementById("verse-text");
-const ref = document.getElementById("verse-ref");
-const statusEl = document.getElementById("status");
-const hint = document.getElementById("hint");
+/* =========================================================
+   ELEMENT REFERENCES
+   ========================================================= */
 
-// Shrink-to-fit: long verses always stay fully on screen
-function fit(){
-  let size = 5.2;
-  txt.style.fontSize = size + "vmin";
-  while (size > 1.6 && stage.scrollHeight > window.innerHeight){
-    size -= 0.2;
-    txt.style.fontSize = size + "vmin";
+var frame =
+  document.getElementById("output-frame");
+
+var overlay =
+  document.getElementById("output-overlay");
+
+var vt =
+  document.getElementById("output-vtext");
+
+var vr =
+  document.getElementById("output-vref");
+
+var statusEl =
+  document.getElementById("status");
+
+var hint =
+  document.getElementById("hint");
+
+
+/* =========================================================
+   WEBSOCKET URL
+   =========================================================
+
+   Works in:
+
+   1. Normal browser/FastAPI:
+      http://127.0.0.1:8000/output
+      -> ws://127.0.0.1:8000/ws
+
+   2. HTTPS:
+      https://...
+      -> wss://.../ws
+
+   3. Electron/file://:
+      file:///.../output.html
+      -> ws://127.0.0.1:8000/ws
+   ========================================================= */
+
+var WS_URL;
+
+if (
+  location.protocol === "http:" ||
+  location.protocol === "https:"
+) {
+
+  WS_URL =
+    (location.protocol === "https:"
+      ? "wss:"
+      : "ws:") +
+    "//" +
+    location.host +
+    "/ws";
+
+} else {
+
+  WS_URL =
+    "ws://127.0.0.1:8000/ws";
+
+}
+
+console.log(
+  "[FaithView Output] WebSocket URL:",
+  WS_URL
+);
+
+
+/* =========================================================
+   FIT SCRIPTURE TO SCREEN
+   ========================================================= */
+
+function fit() {
+
+  var size = 5.2;
+
+  vt.style.fontSize =
+    size + "vmin";
+
+  var maxHeight =
+    window.innerHeight * 0.72;
+
+  var maxWidth =
+    window.innerWidth * 0.90;
+
+  while (
+    size > 1.8 &&
+    (
+      vt.scrollHeight > maxHeight ||
+      vt.scrollWidth > maxWidth
+    )
+  ) {
+
+    size -= 0.15;
+
+    vt.style.fontSize =
+      size + "vmin";
   }
-}
-window.addEventListener("resize", fit);
 
-function showSlide(text, reference){
-  // Reset stage for plain text mode (flex centering)
-  stage.style.display = 'flex';
-  stage.style.flexDirection = 'column';
-  stage.style.alignItems = 'center';
-  stage.style.justifyContent = 'center';
-  stage.style.padding = '7vmin 9vmin';
-  stage.querySelectorAll('.theme-el').forEach(e => e.remove());
-  txt.style.display = '';
-  ref.style.display = '';
-  txt.textContent = text || "";
-  ref.textContent = reference || "";
-  stage.classList.add("live");
-  fit();
-}
-function clearSlide(){
-  stage.classList.remove("live");
-  stage.querySelectorAll('.theme-el').forEach(e => e.remove());
-  txt.textContent = '';
-  ref.textContent = '';
-  // Reset to default flex layout
-  stage.style.display = 'flex';
-  stage.style.flexDirection = 'column';
-  stage.style.alignItems = 'center';
-  stage.style.justifyContent = 'center';
-  stage.style.padding = '7vmin 9vmin';
 }
 
-function connect(){
-  const ws = new WebSocket(WS_URL);
-  ws.onopen = () => statusEl.classList.add("live");
-  ws.onclose = () => { statusEl.classList.remove("live"); setTimeout(connect, 2000); };
-  ws.onerror = () => ws.close();
-  ws.onmessage = (ev) => {
-    let m; try { m = JSON.parse(ev.data); } catch { return; }
-    if (m.type === "display_update"){
-      if (m.clear){
-        clearSlide();
-      } else {
-        // If a full theme payload is present, render elements
-        if (m.theme && typeof m.theme === 'object'){
-          renderTheme(m.theme);
-        } else {
-          const r = (m.reference || "").toUpperCase();
-          const t = m.translation ? " (" + m.translation + ")" : "";
-          showSlide(m.text, r + t);
-        }
-      }
+
+/* =========================================================
+   WINDOW RESIZE
+   ========================================================= */
+
+window.addEventListener(
+  "resize",
+  function () {
+    fit();
+  }
+);
+
+
+/* =========================================================
+   REMOVE THEME ELEMENTS
+   ========================================================= */
+
+function clearExtraElements() {
+
+  var elements =
+    frame.querySelectorAll(
+      ".theme-extra"
+    );
+
+  elements.forEach(
+    function (element) {
+      element.remove();
     }
-    if (m.type === "alert_update"){
-      const bar = document.getElementById("alert-bar");
-      const ticker = document.getElementById("alert-ticker");
-      if (m.alert && m.alert.text){
-        bar.classList.add("active");
-        ticker.innerHTML = "<span>" + m.alert.text + "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + m.alert.text + "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + m.alert.text + "</span>";
-        const speeds = {"very slow":"20s","slow":"15s","medium":"10s","fast":"6s","very fast":"4s"};
-        const dur = speeds[(m.alert.speed||"").toLowerCase()] || "10s";
-        ticker.style.animationDuration = dur;
-      } else {
-        bar.classList.remove("active");
-        ticker.innerHTML = "";
-      }
-    }
-  };
+  );
+
 }
-connect();
 
-function renderTheme(theme){
-  try{
-    // Reset stage: no padding so absolute % elements align exactly as designed
-    stage.style.position = 'fixed';
-    stage.style.inset = '0';
-    stage.style.display = 'block';
-    stage.style.padding = '0';
-    stage.style.margin = '0';
-    stage.style.textAlign = 'center';
-    stage.style.transition = 'opacity .45s ease, background .3s ease';
-    stage.style.background = '';
-    stage.style.backgroundImage = '';
 
-    // ---- Background ----
-    // Settings format: theme.canvas = { bgType, bgColor, bgImage, bgFit, bgOpacity }
-    // Standalone format: theme.background = { color, image }
-    const canvasCfg = theme.canvas;
-    const bgObj = theme.background;
-    if (canvasCfg){
-      if (canvasCfg.bgType === 'image' && canvasCfg.bgImage){
-        stage.style.backgroundImage = 'linear-gradient(rgba(0,0,0,0.15),rgba(0,0,0,0.25)),url("' + canvasCfg.bgImage + '")';
-        stage.style.backgroundSize = canvasCfg.bgFit || 'cover';
-      } else {
-        stage.style.background = canvasCfg.bgColor || '#000';
-      }
-    } else if (bgObj){
-      if (bgObj.image && bgObj.image !== 'none' && !bgObj.image.startsWith('none')){
-        stage.style.backgroundImage = bgObj.image;
-        stage.style.backgroundSize = 'cover';
-      } else if (bgObj.color){
-        stage.style.background = bgObj.color;
-      }
+/* =========================================================
+   RESET BACKGROUND
+   ========================================================= */
+
+function resetFrameToDefaults() {
+
+  frame.style.background =
+    "radial-gradient(circle at 50% 30%, #4a9eff 0%, #1a3a6a 55%, #0a0f1a 100%)";
+
+  frame.style.backgroundSize =
+    "cover";
+
+  frame.style.backgroundPosition =
+    "center";
+
+  frame.style.backgroundRepeat =
+    "no-repeat";
+
+  frame.style.backgroundImage =
+    "";
+}
+
+
+/* =========================================================
+   RESET TEXT STYLES
+   ========================================================= */
+
+function resetVtVrStyles() {
+
+  vt.style.cssText = "";
+
+  vr.style.cssText = "";
+
+  vt.style.color =
+    "#fff";
+
+  vt.style.fontWeight =
+    "700";
+
+  vt.style.lineHeight =
+    "1.38";
+
+  vt.style.fontSize =
+    "5.2vmin";
+
+  vt.style.maxWidth =
+    "88vw";
+
+  vt.style.textShadow =
+    "0 2px 14px rgba(0,0,0,.4)";
+
+  vr.style.color =
+    "#c9dfff";
+
+  vr.style.marginTop =
+    "4.5vmin";
+
+  vr.style.fontWeight =
+    "600";
+
+  vr.style.fontSize =
+    "2.6vmin";
+
+  vr.style.letterSpacing =
+    ".08em";
+
+  vr.style.textTransform =
+    "uppercase";
+
+}
+
+
+/* =========================================================
+   SHOW NORMAL SCRIPTURE
+   ========================================================= */
+
+function showSlide(
+  text,
+  reference
+) {
+
+  console.log(
+    "[FaithView Output] Showing scripture:",
+    reference,
+    text
+  );
+
+  clearExtraElements();
+
+  resetFrameToDefaults();
+
+  resetVtVrStyles();
+
+  overlay.style.display =
+    "flex";
+
+  overlay.style.visibility =
+    "visible";
+
+  overlay.style.opacity =
+    "1";
+
+  vt.textContent =
+    text || "";
+
+  vr.textContent =
+    reference || "";
+
+  requestAnimationFrame(
+    function () {
+      fit();
+    }
+  );
+
+}
+
+
+/* =========================================================
+   CLEAR SCRIPTURE
+   ========================================================= */
+
+function clearSlide() {
+
+  console.log(
+    "[FaithView Output] Clearing scripture"
+  );
+
+  vt.textContent =
+    "";
+
+  vr.textContent =
+    "";
+
+  overlay.style.display =
+    "none";
+
+  clearExtraElements();
+
+  resetFrameToDefaults();
+
+  resetVtVrStyles();
+
+}
+
+
+/* =========================================================
+   APPLY TEXT STYLE
+   ========================================================= */
+
+function applyTextStyle(
+  targetEl,
+  styleStr
+) {
+
+  if (
+    !styleStr ||
+    typeof styleStr !== "string"
+  ) {
+    return;
+  }
+
+  var props =
+    styleStr.split(";");
+
+  for (
+    var i = 0;
+    i < props.length;
+    i++
+  ) {
+
+    var colonIdx =
+      props[i].indexOf(":");
+
+    if (
+      colonIdx === -1
+    ) {
+      continue;
     }
 
-    // ---- Elements ----
-    // Remove old theme elements
-    stage.querySelectorAll('.theme-el').forEach(e => e.remove());
-    txt.textContent = '';
-    ref.textContent = '';
-    txt.style.display = 'none';
-    ref.style.display = 'none';
+    var key =
+      props[i]
+        .substring(
+          0,
+          colonIdx
+        )
+        .trim();
 
-    let hasRendered = false;
+    var val =
+      props[i]
+        .substring(
+          colonIdx + 1
+        )
+        .trim();
 
-    // Default element styles by type (for fallback when no style data exists)
-    const TYPE_DEFAULTS = {
-      verse:  { width:'84%', left:'8%', top:'20%', textAlign:'center', fontWeight:600, fontSize:'clamp(24px,4vw,44px)', lineHeight:'1.25', color:'#fff' },
-      ref:    { width:'76%', left:'12%', top:'62%', textAlign:'center', fontSize:'18px', fontWeight:700, letterSpacing:'.06em', color:'#f1d9a3', textTransform:'uppercase' },
-      copy:   { left:'22px', bottom:'16px', fontSize:'12px', color:'rgba(255,255,255,.98)' },
-      logo:   { right:'24px', top:'20px', width:'65px', height:'65px' },
+    if (
+      !key ||
+      !val
+    ) {
+      continue;
+    }
+
+    /*
+     * Prevent theme elements from
+     * breaking the main layout.
+     */
+    if (
+      [
+        "position",
+        "left",
+        "top",
+        "right",
+        "bottom",
+        "width",
+        "height",
+        "display",
+        "overflow",
+        "justify-content",
+        "align-items"
+      ].indexOf(key) !== -1
+    ) {
+      continue;
+    }
+
+    try {
+
+      targetEl.style.setProperty(
+        key,
+        val
+      );
+
+    } catch (e) {
+
+      console.warn(
+        "[FaithView Output] Failed style:",
+        key,
+        val
+      );
+
+    }
+
+  }
+
+}
+
+
+/* =========================================================
+   CREATE LOGO
+   ========================================================= */
+
+function createLogoElement(
+  el
+) {
+
+  var div =
+    document.createElement(
+      "div"
+    );
+
+  div.className =
+    "theme-extra theme-logo";
+
+  if (el.style) {
+
+    var props =
+      el.style.split(";");
+
+    for (
+      var i = 0;
+      i < props.length;
+      i++
+    ) {
+
+      var colonIdx =
+        props[i].indexOf(":");
+
+      if (
+        colonIdx === -1
+      ) {
+        continue;
+      }
+
+      var key =
+        props[i]
+          .substring(
+            0,
+            colonIdx
+          )
+          .trim();
+
+      var val =
+        props[i]
+          .substring(
+            colonIdx + 1
+          )
+          .trim();
+
+      if (
+        !key ||
+        !val
+      ) {
+        continue;
+      }
+
+      try {
+
+        div.style.setProperty(
+          key,
+          val
+        );
+
+      } catch (e) {}
+
+    }
+
+  }
+
+  if (el.logoSrc) {
+
+    var img =
+      document.createElement(
+        "img"
+      );
+
+    img.src =
+      el.logoSrc;
+
+    img.alt =
+      "Church logo";
+
+    div.appendChild(
+      img
+    );
+
+  } else {
+
+    div.style.background =
+      el.logoBg ||
+      "#e8a33d";
+
+    div.style.borderRadius =
+      "12px";
+
+    div.style.display =
+      "flex";
+
+    div.style.alignItems =
+      "center";
+
+    div.style.justifyContent =
+      "center";
+
+    div.style.color =
+      "#1a1200";
+
+    div.style.fontWeight =
+      "800";
+
+    div.style.fontSize =
+      "23px";
+
+    div.textContent =
+      el.text ||
+      "CH";
+
+  }
+
+  frame.appendChild(
+    div
+  );
+
+}
+
+
+/* =========================================================
+   CREATE EXTRA TEXT ELEMENT
+   ========================================================= */
+
+function createExtraElement(
+  el
+) {
+
+  var div =
+    document.createElement(
+      "div"
+    );
+
+  div.className =
+    "theme-extra";
+
+  div.textContent =
+    el.text || "";
+
+  if (el.style) {
+
+    var props =
+      el.style.split(";");
+
+    for (
+      var i = 0;
+      i < props.length;
+      i++
+    ) {
+
+      var colonIdx =
+        props[i].indexOf(":");
+
+      if (
+        colonIdx === -1
+      ) {
+        continue;
+      }
+
+      var key =
+        props[i]
+          .substring(
+            0,
+            colonIdx
+          )
+          .trim();
+
+      var val =
+        props[i]
+          .substring(
+            colonIdx + 1
+          )
+          .trim();
+
+      if (
+        !key ||
+        !val
+      ) {
+        continue;
+      }
+
+      try {
+
+        div.style.setProperty(
+          key,
+          val
+        );
+
+      } catch (e) {}
+
+    }
+
+  }
+
+  frame.appendChild(
+    div
+  );
+
+}
+
+
+/* =========================================================
+   RENDER THEME
+   ========================================================= */
+
+function renderTheme(
+  theme
+) {
+
+  try {
+
+    console.log(
+      "[FaithView Output] Rendering theme:",
+      theme
+    );
+
+    clearExtraElements();
+
+    var canvasCfg =
+      theme.canvas;
+
+    var bgObj =
+      theme.background;
+
+    frame.style.background =
+      "";
+
+    frame.style.backgroundImage =
+      "";
+
+    frame.style.backgroundSize =
+      "";
+
+    frame.style.backgroundPosition =
+      "center";
+
+    frame.style.backgroundRepeat =
+      "no-repeat";
+
+
+    /* -----------------------------------------------------
+       BACKGROUND
+       ----------------------------------------------------- */
+
+    if (canvasCfg) {
+
+      if (
+        canvasCfg.bgType === "image" &&
+        canvasCfg.bgImage
+      ) {
+
+        frame.style.backgroundImage =
+          'linear-gradient(rgba(0,0,0,0.15),rgba(0,0,0,0.25)),url("' +
+          canvasCfg.bgImage +
+          '")';
+
+        frame.style.backgroundSize =
+          canvasCfg.bgFit ||
+          "cover";
+
+        frame.style.backgroundPosition =
+          "center";
+
+        frame.style.backgroundRepeat =
+          "no-repeat";
+
+      } else {
+
+        frame.style.background =
+          canvasCfg.bgColor ||
+          "#000";
+
+      }
+
+    } else if (bgObj) {
+
+      if (
+        bgObj.image &&
+        bgObj.image !== "none" &&
+        !bgObj.image.startsWith("none")
+      ) {
+
+        frame.style.backgroundImage =
+          bgObj.image;
+
+        frame.style.backgroundSize =
+          "cover";
+
+        frame.style.backgroundPosition =
+          "center";
+
+        frame.style.backgroundRepeat =
+          "no-repeat";
+
+      } else if (
+        bgObj.color
+      ) {
+
+        frame.style.background =
+          bgObj.color;
+
+      }
+
+    }
+
+
+    /* -----------------------------------------------------
+       SCRIPTURE DATA
+       ----------------------------------------------------- */
+
+    var verseText =
+      theme.text ||
+      "";
+
+    var refText =
+      theme.reference ||
+      "";
+
+    var elements =
+      Array.isArray(theme.elements)
+        ? theme.elements
+        : [];
+
+
+    /* -----------------------------------------------------
+       GET VERSE/REFERENCE FROM ELEMENTS
+       ----------------------------------------------------- */
+
+    for (
+      var i = 0;
+      i < elements.length;
+      i++
+    ) {
+
+      var el =
+        elements[i];
+
+      if (
+        !el ||
+        !el.type
+      ) {
+        continue;
+      }
+
+      if (
+        el.type === "verse" &&
+        el.text
+      ) {
+
+        verseText =
+          el.text;
+
+      }
+
+      if (
+        el.type === "ref" &&
+        el.text
+      ) {
+
+        refText =
+          el.text;
+
+      }
+
+    }
+
+
+    /* -----------------------------------------------------
+       DISPLAY SCRIPTURE
+       ----------------------------------------------------- */
+
+    resetVtVrStyles();
+
+    overlay.style.display =
+      "flex";
+
+    overlay.style.visibility =
+      "visible";
+
+    overlay.style.opacity =
+      "1";
+
+    vt.textContent =
+      verseText;
+
+    vr.textContent =
+      refText;
+
+
+    /* -----------------------------------------------------
+       RENDER ELEMENT STYLES
+       ----------------------------------------------------- */
+
+    for (
+      var j = 0;
+      j < elements.length;
+      j++
+    ) {
+
+      var element =
+        elements[j];
+
+      if (
+        !element ||
+        !element.type
+      ) {
+        continue;
+      }
+
+      if (
+        element.type === "verse" &&
+        element.style
+      ) {
+
+        applyTextStyle(
+          vt,
+          element.style
+        );
+
+      }
+
+      if (
+        element.type === "ref" &&
+        element.style
+      ) {
+
+        applyTextStyle(
+          vr,
+          element.style
+        );
+
+      }
+
+      if (
+        element.type === "logo"
+      ) {
+
+        createLogoElement(
+          element
+        );
+
+      }
+
+      if (
+        element.type === "copy" &&
+        element.text
+      ) {
+
+        createExtraElement(
+          element
+        );
+
+      }
+
+    }
+
+
+    requestAnimationFrame(
+      function () {
+        fit();
+      }
+    );
+
+
+    console.log(
+      "[FaithView Output] Theme rendered. Text:",
+      verseText,
+      "Reference:",
+      refText
+    );
+
+  } catch (e) {
+
+    console.error(
+      "[FaithView Output] Theme rendering failed:",
+      e
+    );
+
+    showSlide(
+      theme && theme.text
+        ? theme.text
+        : "",
+
+      theme && theme.reference
+        ? theme.reference +
+          (
+            theme.translation
+              ? " (" +
+                theme.translation +
+                ")"
+              : ""
+          )
+        : ""
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   LOAD SAVED THEME
+   ========================================================= */
+
+(function loadSavedTheme() {
+
+  try {
+
+    var raw =
+      localStorage.getItem(
+        "faithview-active-theme"
+      );
+
+    if (!raw) {
+      return;
+    }
+
+    var theme =
+      JSON.parse(raw);
+
+    if (
+      theme &&
+      (
+        (
+          theme.elements &&
+          theme.elements.length
+        ) ||
+        theme.text
+      )
+    ) {
+
+      console.log(
+        "[FaithView Output] Loading saved theme"
+      );
+
+      renderTheme(
+        theme
+      );
+
+    }
+
+  } catch (e) {
+
+    console.warn(
+      "[FaithView Output] Could not load saved theme:",
+      e
+    );
+
+  }
+
+})();
+
+
+/* =========================================================
+   WEBSOCKET
+   ========================================================= */
+
+var ws =
+  null;
+
+var reconnectTimer =
+  null;
+
+
+/* =========================================================
+   CONNECT
+   ========================================================= */
+
+function connect() {
+
+  console.log(
+    "[FaithView Output] Connecting to:",
+    WS_URL
+  );
+
+  try {
+
+    ws =
+      new WebSocket(
+        WS_URL
+      );
+
+  } catch (err) {
+
+    console.error(
+      "[FaithView Output] WebSocket creation failed:",
+      err
+    );
+
+    clearTimeout(
+      reconnectTimer
+    );
+
+    reconnectTimer =
+      setTimeout(
+        connect,
+        2000
+      );
+
+    return;
+  }
+
+
+  /* -------------------------------------------------------
+     OPEN
+     ------------------------------------------------------- */
+
+  ws.onopen =
+    function () {
+
+      console.log(
+        "[FaithView Output] WebSocket CONNECTED"
+      );
+
+      statusEl.classList.add(
+        "live"
+      );
+
+      statusEl.title =
+        "connected";
+
+      clearTimeout(
+        reconnectTimer
+      );
+
     };
 
-    if (Array.isArray(theme.elements) && theme.elements.length){
-      for (const el of theme.elements){
-        if (!el || !el.type) continue;
 
-        const div = document.createElement('div');
-        div.className = 'theme-el';
-        const defaults = TYPE_DEFAULTS[el.type] || {};
+  /* -------------------------------------------------------
+     CLOSE
+     ------------------------------------------------------- */
 
-        if (el.style){
-          // Style string contains percentage-based positioning from captureThemeState()
-          div.style.cssText = el.style;
-          // Ensure position context
-          if (!/position\s*:/i.test(el.style)) div.style.position = 'absolute';
-          div.style.textShadow = '0 2px 14px rgba(0,0,0,0.4)';
-          div.style.justifyContent = 'center';
-          div.textContent = el.text || '';
-        } else if (canvasCfg){
-          // ---- Settings format: structured x/y/w/h ----
-          const W = canvasCfg.width || 1920;
-          const H = canvasCfg.height || 1080;
-          div.style.position = 'absolute';
-          div.style.left = ((el.x || 0) / W * 100) + '%';
-          div.style.top = ((el.y || 0) / H * 100) + '%';
-          div.style.width = ((el.w || 80) / W * 100) + '%';
-          div.style.height = ((el.h || 10) / H * 100) + '%';
-          div.style.display = 'flex';
-          div.style.alignItems = 'center';
-          div.style.justifyContent = el.align === 'center' ? 'center' : el.align === 'right' ? 'flex-end' : 'flex-start';
-          div.style.textAlign = el.align || 'center';
-          div.style.fontFamily = el.font || 'Georgia, serif';
-          div.style.fontSize = ((el.size || 40) / H * 100) + 'vmin';
-          div.style.fontWeight = el.weight || 600;
-          div.style.color = el.color || '#fff';
-          div.style.opacity = (el.opacity != null ? el.opacity : 1);
-          div.style.letterSpacing = (el.letterSpacing || 0) + 'px';
-          div.style.lineHeight = el.lineHeight || 1.25;
-          div.style.overflow = 'hidden';
-          div.style.textShadow = '0 2px 14px rgba(0,0,0,0.4)';
-          if (el.type === 'logo' && el.logoBg){
-            div.style.background = el.logoBg;
-            div.style.borderRadius = '50%';
-            div.style.alignItems = 'center';
-            div.style.justifyContent = 'center';
-          }
-          div.textContent = el.text || '';
-        } else {
-          // Fallback: no canvas config, no inline style - use type-aware defaults
-          div.style.position = 'absolute';
-          div.style.display = 'flex';
-          div.style.alignItems = 'center';
-          div.style.justifyContent = 'center';
-          div.style.textAlign = 'center';
-          div.style.overflow = 'hidden';
-          div.style.color = defaults.color || '#fff';
-          div.style.fontWeight = defaults.fontWeight || 600;
-          if (defaults.fontSize) div.style.fontSize = defaults.fontSize;
-          if (defaults.lineHeight) div.style.lineHeight = defaults.lineHeight;
-          if (defaults.width) div.style.width = defaults.width;
-          div.style.left = defaults.left || '10%';
-          if (defaults.top) div.style.top = defaults.top;
-          if (defaults.bottom) div.style.bottom = defaults.bottom;
-          if (defaults.right) div.style.right = defaults.right;
-          div.style.textShadow = '0 2px 14px rgba(0,0,0,0.4)';
-          const zMap = {verse:3, ref:2, copy:1, logo:4};
-          div.style.zIndex = zMap[el.type] || 1;
-          div.textContent = el.text || '';
+  ws.onclose =
+    function (event) {
+
+      console.warn(
+        "[FaithView Output] WebSocket DISCONNECTED",
+        event.code,
+        event.reason
+      );
+
+      statusEl.classList.remove(
+        "live"
+      );
+
+      statusEl.title =
+        "disconnected";
+
+      clearTimeout(
+        reconnectTimer
+      );
+
+      reconnectTimer =
+        setTimeout(
+          connect,
+          2000
+        );
+
+    };
+
+
+  /* -------------------------------------------------------
+     ERROR
+     ------------------------------------------------------- */
+
+  ws.onerror =
+    function (err) {
+
+      console.error(
+        "[FaithView Output] WebSocket ERROR:",
+        err
+      );
+
+    };
+
+
+  /* -------------------------------------------------------
+     MESSAGE
+     ------------------------------------------------------- */
+
+  ws.onmessage =
+    function (ev) {
+
+      console.log(
+        "[FaithView Output] RECEIVED:",
+        ev.data
+      );
+
+      var m;
+
+      try {
+
+        m =
+          JSON.parse(
+            ev.data
+          );
+
+      } catch (e) {
+
+        console.error(
+          "[FaithView Output] Invalid WebSocket JSON:",
+          ev.data
+        );
+
+        return;
+      }
+
+
+      console.log(
+        "[FaithView Output] MESSAGE:",
+        m
+      );
+
+
+      /* ===================================================
+         DISPLAY UPDATE
+         =================================================== */
+
+      if (
+        m.type ===
+        "display_update"
+      ) {
+
+        /* -----------------------------------------------
+           CLEAR
+           ----------------------------------------------- */
+
+        if (
+          m.clear === true
+        ) {
+
+          clearSlide();
+
+          return;
         }
 
-        stage.appendChild(div);
-        hasRendered = true;
 
-        // Keep verse/ref references for quick access
-        if (el.type === 'verse' && el.text){ txt.textContent = el.text; }
-        if (el.type === 'ref' && el.text){ ref.textContent = el.text; }
+        /* -----------------------------------------------
+           THEME SCRIPTURE
+           ----------------------------------------------- */
+
+        if (
+          m.theme &&
+          typeof m.theme === "object"
+        ) {
+
+          /*
+           * Make sure scripture data from the
+           * WebSocket is not lost if the theme
+           * itself doesn't contain it.
+           */
+
+          if (
+            !m.theme.text &&
+            m.text
+          ) {
+
+            m.theme.text =
+              m.text;
+
+          }
+
+          if (
+            !m.theme.reference &&
+            m.reference
+          ) {
+
+            m.theme.reference =
+              m.reference;
+
+          }
+
+          if (
+            !m.theme.translation &&
+            m.translation
+          ) {
+
+            m.theme.translation =
+              m.translation;
+
+          }
+
+          renderTheme(
+            m.theme
+          );
+
+          return;
+        }
+
+
+        /* -----------------------------------------------
+           NORMAL SCRIPTURE
+           ----------------------------------------------- */
+
+        var scriptureText =
+          m.text ||
+          m.verse ||
+          m.scripture ||
+          "";
+
+        var reference =
+          m.reference ||
+          m.ref ||
+          "";
+
+        var translation =
+          m.translation ||
+          m.version ||
+          "";
+
+
+        if (!scriptureText) {
+
+          console.warn(
+            "[FaithView Output] display_update received but no scripture text:",
+            m
+          );
+
+          return;
+        }
+
+
+        var refText =
+          String(
+            reference
+          ).toUpperCase();
+
+
+        if (translation) {
+
+          refText +=
+            " (" +
+            String(
+              translation
+            ).toUpperCase() +
+            ")";
+
+        }
+
+
+        showSlide(
+          scriptureText,
+          refText
+        );
+
       }
-    }
 
-    if (!hasRendered){
-      // No elements - fallback to plain text
-      txt.style.display = '';
-      ref.style.display = '';
-      txt.textContent = theme.text || '';
-      ref.textContent = theme.reference || '';
-    }
 
-    stage.classList.add("live");
-  }catch(e){
-    showSlide(theme.text||'', (theme.reference||'') + (theme.translation?(' ('+theme.translation+')'):'') );
+      /* ===================================================
+         ALERT UPDATE
+         =================================================== */
+
+      if (
+        m.type ===
+        "alert_update"
+      ) {
+
+        var bar =
+          document.getElementById(
+            "alert-bar"
+          );
+
+        var ticker =
+          document.getElementById(
+            "alert-ticker"
+          );
+
+
+        if (
+          m.alert &&
+          m.alert.text
+        ) {
+
+          bar.classList.add(
+            "active"
+          );
+
+
+          /*
+           * Use textContent instead of innerHTML
+           * so alert text cannot break the page.
+           */
+
+          ticker.innerHTML =
+            "";
+
+          var span =
+            document.createElement(
+              "span"
+            );
+
+          span.textContent =
+            m.alert.text +
+            "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0" +
+            m.alert.text +
+            "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0" +
+            m.alert.text;
+
+          ticker.appendChild(
+            span
+          );
+
+
+          var speeds = {
+
+            "very slow":
+              "20s",
+
+            "slow":
+              "15s",
+
+            "medium":
+              "10s",
+
+            "fast":
+              "6s",
+
+            "very fast":
+              "4s"
+
+          };
+
+
+          ticker.style.animationDuration =
+            speeds[
+              (
+                m.alert.speed ||
+                ""
+              ).toLowerCase()
+            ] ||
+            "10s";
+
+        } else {
+
+          bar.classList.remove(
+            "active"
+          );
+
+          ticker.innerHTML =
+            "";
+
+        }
+
+      }
+
+    };
+
+}
+
+
+/* =========================================================
+   START WEBSOCKET
+   ========================================================= */
+
+connect();
+
+
+/* =========================================================
+   FULLSCREEN
+   ========================================================= */
+
+function toggleFullscreen() {
+
+  if (
+    document.fullscreenElement
+  ) {
+
+    document
+      .exitFullscreen()
+      .catch(
+        function () {}
+      );
+
+  } else {
+
+    document
+      .documentElement
+      .requestFullscreen()
+      .catch(
+        function () {}
+      );
+
   }
+
 }
 
-// Fullscreen on double-click or F key
-function toggleFullscreen(){
-  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-  else document.documentElement.requestFullscreen().catch(() => {});
-}
-document.addEventListener("dblclick", toggleFullscreen);
-document.addEventListener("keydown", (e) => {
-  if (e.key === "f" || e.key === "F") toggleFullscreen();
-});
 
-// Auto-hide cursor after 2 seconds of no mouse movement (projector-friendly)
-let _cursorTimer;
-function showCursor(){
-  document.body.classList.remove("hide-cursor");
-  clearTimeout(_cursorTimer);
-  _cursorTimer = setTimeout(() => {
-    document.body.classList.add("hide-cursor");
-  }, 2000);
+/* Double click */
+document.addEventListener(
+  "dblclick",
+  function () {
+
+    toggleFullscreen();
+
+  }
+);
+
+
+/* F key */
+document.addEventListener(
+  "keydown",
+  function (e) {
+
+    if (
+      e.key === "f" ||
+      e.key === "F"
+    ) {
+
+      /*
+       * Don't trigger fullscreen while
+       * typing in an input.
+       */
+
+      var tag =
+        e.target &&
+        e.target.tagName
+          ? e.target.tagName
+          : "";
+
+      if (
+        tag !== "INPUT" &&
+        tag !== "TEXTAREA" &&
+        tag !== "SELECT"
+      ) {
+
+        toggleFullscreen();
+
+      }
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   CURSOR AUTO HIDE
+   ========================================================= */
+
+var _cursorTimer;
+
+
+function showCursor() {
+
+  document.body.classList.remove(
+    "hide-cursor"
+  );
+
+  clearTimeout(
+    _cursorTimer
+  );
+
+  _cursorTimer =
+    setTimeout(
+      function () {
+
+        document.body.classList.add(
+          "hide-cursor"
+        );
+
+      },
+      2000
+    );
+
 }
-document.addEventListener("mousemove", showCursor);
+
+
+document.addEventListener(
+  "mousemove",
+  showCursor
+);
+
 showCursor();
 
-// Fade hint away
-setTimeout(() => { hint.style.opacity = "0"; }, 5000);
+
+/* =========================================================
+   HIDE HINT
+   ========================================================= */
+
+setTimeout(
+  function () {
+
+    hint.style.opacity =
+      "0";
+
+  },
+  5000
+);
+
+
+/* =========================================================
+   INITIAL FIT
+   ========================================================= */
+
+window.addEventListener(
+  "load",
+  function () {
+
+    fit();
+
+  }
+);
+
 </script>
+
 </body>
 </html>
