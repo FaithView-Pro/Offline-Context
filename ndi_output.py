@@ -508,7 +508,10 @@ class NDISender:
                 # e.g. an OBS NDI source -- attaches.)
                 idle = self._connections == 0
                 interval = 0.5 if idle else 1.0 / self.fps
-                if self._dirty and not idle:
+                # Render on any content change, even when no receiver is
+                # connected yet, so the buffer always carries the latest slide
+                # (a receiver that attaches later gets it immediately).
+                if self._dirty:
                     self._render_pending_into(bufs[1 - cur])
                     cur = 1 - cur
                 self._lib.NDIlib_send_send_video_async_v2(
