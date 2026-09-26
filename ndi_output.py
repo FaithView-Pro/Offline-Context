@@ -83,6 +83,14 @@ class NDIlib_tally_t(ctypes.Structure):
                 ("on_preview", ctypes.c_bool)]
 
 
+class NDIlib_source_t(ctypes.Structure):
+    # Field order matches this SDK's runtime layout (verified empirically):
+    # [0] = human-readable name, [1] = "ip:port", [2] = url (often NULL).
+    _fields_ = [("p_ndi_name", ctypes.c_char_p),
+                ("p_ip_address", ctypes.c_char_p),
+                ("p_url_address", ctypes.c_char_p)]
+
+
 # ---------------------------------------------------------------------------
 # libndi discovery (Linux / macOS / Windows)
 # ---------------------------------------------------------------------------
@@ -124,6 +132,48 @@ def find_libndi() -> Optional[str]:
         if hits:
             return hits[0]
     return None
+
+
+def find_ndi_sources(timeout_s: float = 4.0) -> list:
+    """Discover NDI sources on the local network (receiver-side discovery).
+
+    Uses the NDI finder (which announces/discovery via mDNS/avahi) and returns a
+    list of ``{"name": str, "address": str}``. Safe to call without the NDI
+    runtime installed (returns ``[]``). This is the "can find NDI sources" piece
+    of NDI input support; decoding a source into the display flow is a separate
+    follow-up.
+    """
+    lib_path = find_libndi()
+    if not lib_path:
+        return []
+    try:
+        lib = ctypes.CDLL(lib_path)
+        lib.NDIlib_initialize.restype = ctypes.c_bool
+        lib.NDIlib_find_create_v2.restype = ctypes.c_void_p
+        lib.NDIlib_find_get_current_sources.restype = ctypes.POINTER(NDIlib_source_t)
+        lib.NDIlib_find_get_current_sources.argtypes = [ctypes.c_void_p,
+                                                        ctypes.POINTER(ctypes.c_int)]
+        lib.NDIlib_find_destroy.argtypes = [ctypes.c_void_p]
+        lib.NDIlib_destroy.restype = None
+        if not lib.NDIlib_initialize():
+            return []
+        finder = lib.NDIlib_find_create_v2(None)
+        time.sleep(timeout_s)
+        n = ctypes.c_int(0)
+        srcs = lib.NDIlib_find_get_current_sources(finder, ctypes.byref(n))
+        out = []
+        for i in range(n.value):
+            s = srcs[i]
+            name = (s.p_ndi_name or b"").decode("utf-8", "replace")
+            address = (s.p_ip_address or b"").decode("utf-8", "replace")
+            if name or address:
+                out.append({"name": name, "address": address})
+        lib.NDIlib_find_destroy(finder)
+        lib.NDIlib_destroy()
+        return out
+    except Exception as exc:
+        print(f"[ndi] find_ndi_sources failed: {exc}")
+        return []
 
 
 def _fix_dbus_system_bus_address():

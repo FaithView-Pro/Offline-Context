@@ -51,3 +51,6 @@ node_modules/
 *.jpeg
 target/
 gen/
+
+# Electron app (own git repo at FaithView-Pro/faithViewProElectron)
+src/

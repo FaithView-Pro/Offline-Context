@@ -71,7 +71,7 @@ from typing import Optional
 # "Implementation note" above -- lazy imports broke the WebSocket handshake.
 import uvicorn  # noqa: E402
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect  # noqa: E402
-from fastapi.responses import HTMLResponse, JSONResponse  # noqa: E402
+from fastapi.responses import HTMLResponse, JSONResponse, Response  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 
 import config  # noqa: E402
@@ -86,6 +86,12 @@ except Exception as _ndi_import_exc:
     NDISender = None
     RESOLUTIONS = {}
     print(f"[server] NDI output unavailable: {_ndi_import_exc}")
+
+try:  # optional -- RTMP degrades gracefully if numpy/Pillow/ffmpeg are absent
+    from backend.rtmp_output import RTMPSender  # noqa: E402
+except Exception as _rtmp_import_exc:
+    RTMPSender = None
+    print(f"[server] RTMP output unavailable: {_rtmp_import_exc}")
 
 
 # --- configurable live confidence floor (env-overridable) ------------------
@@ -118,6 +124,9 @@ class AppState:
         # NDI sender -- safe to construct without the NDI runtime installed;
         # it only reports itself unavailable (banner shows install hint).
         self.ndi = NDISender() if NDISender is not None else None
+        self.rtmp_file = os.path.join(config.HERE, "saved_rtmp.json")
+        # RTMP sender -- safe to construct without ffmpeg installed.
+        self.rtmp = RTMPSender() if RTMPSender is not None else None
 
     def init_pipeline(self, **kwargs):
         # The pipeline's callbacks push events onto the asyncio loop so the WS
@@ -136,10 +145,12 @@ class AppState:
             if ev.clear:
                 self._emit({"type": "display_update", "clear": True})
                 self.ndi_clear()
+                self.rtmp_clear()
             else:
                 self._emit({"type": "display_update", "reference": ev.reference,
                             "translation": ev.translation, "text": ev.text})
                 self.ndi_show(ev.reference, ev.translation, ev.text)
+                self.rtmp_show(ev.reference, ev.translation, ev.text)
             # broadcast current_reference for the Bible reader panel
             if self.pipeline and self.pipeline.session.current_reference:
                 t, b, c, v = self.pipeline.session.current_reference
@@ -245,6 +256,61 @@ class AppState:
             except Exception:
                 pass
 
+    # ---- RTMP output: persistence + display mirroring -----------------------
+    def load_rtmp_settings(self):
+        """Restore saved RTMP settings; auto-start the sender if it was on."""
+        if self.rtmp is None:
+            return
+        try:
+            with open(self.rtmp_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return
+        except Exception as exc:
+            print(f"[server] RTMP settings load failed: {exc}")
+            return
+        try:
+            self.rtmp.apply(bool(data.get("enabled")),
+                            url=data.get("url"),
+                            key=data.get("key"),
+                            resolution=data.get("resolution"),
+                            fps=data.get("fps"),
+                            bitrate=data.get("bitrate"))
+        except Exception as exc:
+            print(f"[server] RTMP settings apply failed: {exc}")
+
+    def save_rtmp_settings(self):
+        if self.rtmp is None:
+            return
+        data = {
+            "enabled": self.rtmp.enabled,
+            "url": self.rtmp.url,
+            "key": self.rtmp.key,
+            "resolution": self.rtmp.resolution,
+            "fps": self.rtmp.fps,
+            "bitrate": self.rtmp.bitrate,
+        }
+        try:
+            with open(self.rtmp_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as exc:
+            print(f"[server] RTMP settings save failed: {exc}")
+
+    def rtmp_show(self, reference: str, translation: str, text: str):
+        """Mirror a verse display onto the RTMP stream (no-op if disabled)."""
+        if self.rtmp is not None:
+            try:
+                self.rtmp.show(reference, translation, text)
+            except Exception:
+                pass
+
+    def rtmp_clear(self):
+        if self.rtmp is not None:
+            try:
+                self.rtmp.clear()
+            except Exception:
+                pass
+
 
 STATE = AppState()
 
@@ -290,6 +356,15 @@ class NdiSettingsReq(BaseModel):
     source_name: Optional[str] = None
     resolution: Optional[str] = None
     fps: Optional[int] = None
+
+
+class RtmpSettingsReq(BaseModel):
+    enabled: Optional[bool] = None
+    url: Optional[str] = None
+    key: Optional[str] = None
+    resolution: Optional[str] = None
+    fps: Optional[int] = None
+    bitrate: Optional[str] = None
 
 
 # ===========================================================================
@@ -399,8 +474,9 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
         t = threading.Thread(target=_bootstrap_pipeline, daemon=True,
                              name="fv-bootstrap")
         t.start()
-        # restore saved NDI output settings (auto-starts the sender if it was on)
+        # restore saved output settings (auto-starts the senders if they were on)
         STATE.load_ndi_settings()
+        STATE.load_rtmp_settings()
 
     def _bootstrap_pipeline():
         try:
@@ -468,6 +544,11 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
         if STATE.ndi is not None:
             try:
                 STATE.ndi.stop()
+            except Exception:
+                pass
+        if STATE.rtmp is not None:
+            try:
+                STATE.rtmp.stop()
             except Exception:
                 pass
 
@@ -540,6 +621,9 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
         STATE.ndi_show(STATE.display.get("reference") or "",
                        STATE.display.get("translation") or "",
                        STATE.display.get("text") or "")
+        STATE.rtmp_show(STATE.display.get("reference") or "",
+                        STATE.display.get("translation") or "",
+                        STATE.display.get("text") or "")
         await STATE.broadcast({"type": "display_update", **STATE.display})
         return {"ok": True}
 
@@ -596,6 +680,7 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
         # current_reference (a later "next verse" must still anchor off the
         # last real verse shown), mirroring CLEAR_COMMAND semantics.
         STATE.ndi_clear()
+        STATE.rtmp_clear()
         await STATE.broadcast({"type": "display_update", "clear": True})
         return {"cleared": True}
 
@@ -729,10 +814,32 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
             "status": st,
         }
 
+    def _rtmp_payload() -> dict:
+        if STATE.rtmp is None:
+            return {
+                "enabled": False, "url": "", "key": "",
+                "resolution": "1920x1080", "fps": 30, "bitrate": "4500k",
+                "status": {
+                    "enabled": False, "available": False, "running": False,
+                    "url": "", "key": "", "resolution": "1920x1080", "fps": 30,
+                    "bitrate": "4500k", "reason": "RTMP output unavailable in this build.",
+                },
+            }
+        st = STATE.rtmp.status()
+        return {
+            "enabled": st["enabled"],
+            "url": st["url"],
+            "key": st["key"],
+            "resolution": st["resolution"],
+            "fps": st["fps"],
+            "bitrate": st["bitrate"],
+            "status": st,
+        }
+
     @app.get("/api/settings")
     async def api_settings():
-        """Settings bundle for settings.html (currently: NDI output)."""
-        return {"ndi": _ndi_payload()}
+        """Settings bundle for the output/streaming panel."""
+        return {"ndi": _ndi_payload(), "rtmp": _rtmp_payload()}
 
     @app.put("/api/settings/ndi")
     async def api_settings_ndi(req: NdiSettingsReq):
@@ -753,6 +860,63 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
             return JSONResponse({"error": f"NDI apply failed: {exc}"}, status_code=500)
         STATE.save_ndi_settings()
         return {"ndi": _ndi_payload()}
+
+    @app.put("/api/settings/rtmp")
+    async def api_settings_rtmp(req: RtmpSettingsReq):
+        """Apply an RTMP settings patch; returns the updated RTMP state."""
+        if STATE.rtmp is None:
+            return JSONResponse(
+                {"error": "RTMP output unavailable in this build"}, status_code=500)
+        if req.resolution is not None and req.resolution not in RESOLUTIONS:
+            return JSONResponse({"error": f"invalid resolution (use one of "
+                                          f"{sorted(RESOLUTIONS)})"}, status_code=400)
+        if req.fps is not None and req.fps not in (25, 30, 60):
+            return JSONResponse({"error": "fps must be 25, 30 or 60"}, status_code=400)
+        enabled = req.enabled if req.enabled is not None else STATE.rtmp.enabled
+        try:
+            STATE.rtmp.apply(enabled, url=req.url, key=req.key,
+                             resolution=req.resolution, fps=req.fps,
+                             bitrate=req.bitrate)
+        except Exception as exc:
+            return JSONResponse({"error": f"RTMP apply failed: {exc}"}, status_code=500)
+        STATE.save_rtmp_settings()
+        return {"rtmp": _rtmp_payload()}
+
+    @app.get("/api/ndi/sources")
+    async def api_ndi_sources():
+        """List NDI sources visible on the local network (receiver-side)."""
+        try:
+            from ndi_output import find_ndi_sources
+            sources = await asyncio.to_thread(find_ndi_sources, 4.0)
+            return {"sources": sources}
+        except Exception as exc:
+            return JSONResponse({"error": f"NDI discovery failed: {exc}"}, status_code=500)
+
+    @app.get("/api/preview")
+    async def api_preview(width: int = 640, height: int = 360):
+        """Low-res JPEG of the current slide — drives the in-app monitor panel.
+
+        Reuses the same server-side renderer as NDI/RTMP (no separate pipeline),
+        just scaled down for a small preview surface.
+        """
+        try:
+            import io
+            from PIL import Image
+            from ndi_output import render_black_frame, render_verse_frame
+
+            ref = trans = txt = ""
+            if STATE.display and not STATE.display.get("clear"):
+                ref = STATE.display.get("reference") or ""
+                trans = STATE.display.get("translation") or ""
+                txt = STATE.display.get("text") or ""
+            frame = (render_verse_frame(width, height, ref, trans, txt)
+                     if txt else render_black_frame(width, height))
+            img = Image.fromarray(frame[:, :, :3], "RGB")
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=72)
+            return Response(content=buf.getvalue(), media_type="image/jpeg")
+        except Exception as exc:
+            return JSONResponse({"error": f"preview failed: {exc}"}, status_code=500)
 
     # ---- Vector search (Task 3) -------------------------------------------
     @app.get("/search")
