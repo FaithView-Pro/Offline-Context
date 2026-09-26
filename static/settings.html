@@ -1125,12 +1125,22 @@ function renderNdi(){
 }
 
 async function loadNdi(){
+  const txt = $("#ndi-banner-text");
   try {
     const r = await fetch(API + "/api/settings");
+    if (!r.ok) throw new Error("HTTP " + r.status);
     const d = await r.json();
-    ndiState = d.ndi;
+    ndiState = d.ndi || null;
+    if (!ndiState){
+      txt.textContent = "NDI settings API not available on this server — restart the FaithView Pro server (the running process predates the NDI endpoints), then reload this page.";
+      return;
+    }
     renderNdi();
-  } catch(e){ $("#ndi-banner-text").textContent = "could not reach server settings"; }
+  } catch(e){
+    txt.textContent = (location.protocol === "file:")
+      ? "Open this page through the FaithView Pro server (http://127.0.0.1:<port>/settings.html), not as a file."
+      : "could not reach server settings (" + e.message + ")";
+  }
 }
 
 async function putNdi(patch){
@@ -1139,11 +1149,12 @@ async function putNdi(patch){
       method:"PUT", headers:{"Content-Type":"application/json"},
       body: JSON.stringify(patch),
     });
+    if (!r.ok) throw new Error("HTTP " + r.status);
     const d = await r.json();
-    if (d.error){ toast(d.error); return; }
+    if (d.error || !d.ndi){ toast(d.error || "unexpected settings response"); return; }
     ndiState = d.ndi;
     renderNdi();
-  } catch(e){ toast("settings save failed"); }
+  } catch(e){ toast("NDI settings save failed (" + e.message + ") — restart the server if it was started before the NDI update."); }
 }
 
 $("#ndi-toggle").onclick = () => putNdi({enabled: !(ndiState && ndiState.enabled)});

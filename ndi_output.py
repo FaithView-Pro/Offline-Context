@@ -106,6 +106,7 @@ INSTALL_HINT = (
 
 def find_libndi() -> Optional[str]:
     """Return a loadable libndi path/soname, or None if the runtime is absent."""
+    _fix_dbus_system_bus_address()
     for cand in _LIB_CANDIDATES:
         if not cand:
             continue
@@ -123,6 +124,23 @@ def find_libndi() -> Optional[str]:
         if hits:
             return hits[0]
     return None
+
+
+def _fix_dbus_system_bus_address():
+    """NDI discovery registers its mDNS service through avahi (DBus system bus).
+
+    Under a conda/anaconda Python, a conda-provided libdbus may be loaded into
+    the process; its compile-time default system-bus socket
+    (``$CONDA_PREFIX/var/run/dbus/system_bus_socket``) does not exist, so the
+    avahi registration silently fails with ENOENT and no NDI source is ever
+    announced on the network (OBS/DistroAV finds nothing). Point the env var at
+    the real system socket before libndi is loaded. No-op when the env var is
+    already set or the standard socket is absent."""
+    if "DBUS_SYSTEM_BUS_ADDRESS" in os.environ:
+        return
+    if os.path.exists("/var/run/dbus/system_bus_socket"):
+        os.environ["DBUS_SYSTEM_BUS_ADDRESS"] = (
+            "unix:path=/var/run/dbus/system_bus_socket")
 
 
 # ---------------------------------------------------------------------------

@@ -80,6 +80,13 @@ from transcribe import Segment  # noqa: E402
 from live_transcribe import MicSource, FileSource, _ensure_portaudio  # noqa: E402
 import search as search_mod  # noqa: E402
 
+try:  # optional -- settings UI degrades gracefully if numpy/Pillow are absent
+    from ndi_output import NDISender, RESOLUTIONS  # noqa: E402
+except Exception as _ndi_import_exc:
+    NDISender = None
+    RESOLUTIONS = {}
+    print(f"[server] NDI output unavailable: {_ndi_import_exc}")
+
 
 # --- configurable live confidence floor (env-overridable) ------------------
 LIVE_CONFIDENCE_FLOOR = float(os.environ.get("LIVE_CONFIDENCE_FLOOR", "0.45"))
@@ -107,6 +114,10 @@ class AppState:
         self.display: Optional[dict] = None   # last presented display/theme
         self.active_alert: Optional[dict] = None  # current scrolling alert
         self.themes_file = os.path.join(config.HERE, "saved_themes.json")
+        self.ndi_file = os.path.join(config.HERE, "saved_ndi.json")
+        # NDI sender -- safe to construct without the NDI runtime installed;
+        # it only reports itself unavailable (banner shows install hint).
+        self.ndi = NDISender() if NDISender is not None else None
 
     def init_pipeline(self, **kwargs):
         # The pipeline's callbacks push events onto the asyncio loop so the WS
@@ -124,9 +135,11 @@ class AppState:
         def _on_display(ev: DisplayEvent):
             if ev.clear:
                 self._emit({"type": "display_update", "clear": True})
+                self.ndi_clear()
             else:
                 self._emit({"type": "display_update", "reference": ev.reference,
                             "translation": ev.translation, "text": ev.text})
+                self.ndi_show(ev.reference, ev.translation, ev.text)
             # broadcast current_reference for the Bible reader panel
             if self.pipeline and self.pipeline.session.current_reference:
                 t, b, c, v = self.pipeline.session.current_reference
@@ -181,6 +194,57 @@ class AppState:
         with open(self.themes_file, "w", encoding="utf-8") as f:
             json.dump(themes, f, ensure_ascii=False, indent=2)
 
+    # ---- NDI output: persistence + display mirroring ------------------------
+    def load_ndi_settings(self):
+        """Restore saved NDI settings; auto-start the sender if it was on."""
+        if self.ndi is None:
+            return
+        try:
+            with open(self.ndi_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return
+        except Exception as exc:
+            print(f"[server] NDI settings load failed: {exc}")
+            return
+        try:
+            self.ndi.apply(bool(data.get("enabled")),
+                           source_name=data.get("source_name"),
+                           resolution=data.get("resolution"),
+                           fps=data.get("fps"))
+        except Exception as exc:
+            print(f"[server] NDI settings apply failed: {exc}")
+
+    def save_ndi_settings(self):
+        if self.ndi is None:
+            return
+        data = {
+            "enabled": self.ndi.enabled,
+            "source_name": self.ndi.name,
+            "resolution": self.ndi.resolution,
+            "fps": self.ndi.fps,
+        }
+        try:
+            with open(self.ndi_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as exc:
+            print(f"[server] NDI settings save failed: {exc}")
+
+    def ndi_show(self, reference: str, translation: str, text: str):
+        """Mirror a verse display onto the NDI stream (no-op if disabled)."""
+        if self.ndi is not None:
+            try:
+                self.ndi.show(reference, translation, text)
+            except Exception:
+                pass
+
+    def ndi_clear(self):
+        if self.ndi is not None:
+            try:
+                self.ndi.clear()
+            except Exception:
+                pass
+
 
 STATE = AppState()
 
@@ -219,6 +283,13 @@ class ThemeReq(BaseModel):
 class AlertReq(BaseModel):
     text: str
     speed: Optional[str] = "medium"
+
+
+class NdiSettingsReq(BaseModel):
+    enabled: Optional[bool] = None
+    source_name: Optional[str] = None
+    resolution: Optional[str] = None
+    fps: Optional[int] = None
 
 
 # ===========================================================================
@@ -328,6 +399,8 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
         t = threading.Thread(target=_bootstrap_pipeline, daemon=True,
                              name="fv-bootstrap")
         t.start()
+        # restore saved NDI output settings (auto-starts the sender if it was on)
+        STATE.load_ndi_settings()
 
     def _bootstrap_pipeline():
         try:
@@ -390,6 +463,11 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
         if STATE.pipeline:
             try:
                 STATE.pipeline.stop()
+            except Exception:
+                pass
+        if STATE.ndi is not None:
+            try:
+                STATE.ndi.stop()
             except Exception:
                 pass
 
@@ -459,6 +537,9 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
             "theme": theme,
         }
         print(f"[server] broadcasting display_update with theme (reference={STATE.display.get('reference')})")
+        STATE.ndi_show(STATE.display.get("reference") or "",
+                       STATE.display.get("translation") or "",
+                       STATE.display.get("text") or "")
         await STATE.broadcast({"type": "display_update", **STATE.display})
         return {"ok": True}
 
@@ -514,6 +595,7 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
         # clients. NOTE: we deliberately do NOT reset the router's
         # current_reference (a later "next verse" must still anchor off the
         # last real verse shown), mirroring CLEAR_COMMAND semantics.
+        STATE.ndi_clear()
         await STATE.broadcast({"type": "display_update", "clear": True})
         return {"cleared": True}
 
@@ -622,6 +704,55 @@ def create_app(**pipeline_kwargs) -> "FastAPI":
 
         await STATE.broadcast({"type": "mode_update", "mode": req.mode})
         return {"mode": req.mode}
+
+    # ---- NDI output settings (settings.html Streaming panel) ---------------
+    def _ndi_payload() -> dict:
+        if STATE.ndi is None:
+            return {
+                "enabled": False,
+                "source_name": "",
+                "resolution": "1920x1080",
+                "fps": 30,
+                "status": {
+                    "enabled": False, "available": False, "running": False,
+                    "connections": 0, "on_program": False, "on_preview": False,
+                    "source_name": "", "resolution": "1920x1080", "fps": 30,
+                    "reason": "NDI output unavailable in this build (numpy/Pillow missing).",
+                },
+            }
+        st = STATE.ndi.status()
+        return {
+            "enabled": st["enabled"],
+            "source_name": st["source_name"],
+            "resolution": st["resolution"],
+            "fps": st["fps"],
+            "status": st,
+        }
+
+    @app.get("/api/settings")
+    async def api_settings():
+        """Settings bundle for settings.html (currently: NDI output)."""
+        return {"ndi": _ndi_payload()}
+
+    @app.put("/api/settings/ndi")
+    async def api_settings_ndi(req: NdiSettingsReq):
+        """Apply an NDI settings patch; returns the updated NDI state."""
+        if STATE.ndi is None:
+            return JSONResponse(
+                {"error": "NDI output unavailable in this build"}, status_code=500)
+        if req.resolution is not None and req.resolution not in RESOLUTIONS:
+            return JSONResponse({"error": f"invalid resolution (use one of "
+                                          f"{sorted(RESOLUTIONS)})"}, status_code=400)
+        if req.fps is not None and req.fps not in (25, 30, 60):
+            return JSONResponse({"error": "fps must be 25, 30 or 60"}, status_code=400)
+        enabled = req.enabled if req.enabled is not None else STATE.ndi.enabled
+        try:
+            STATE.ndi.apply(enabled, source_name=req.source_name,
+                            resolution=req.resolution, fps=req.fps)
+        except Exception as exc:
+            return JSONResponse({"error": f"NDI apply failed: {exc}"}, status_code=500)
+        STATE.save_ndi_settings()
+        return {"ndi": _ndi_payload()}
 
     # ---- Vector search (Task 3) -------------------------------------------
     @app.get("/search")
